@@ -39,8 +39,12 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="horizontal">
-
-            <EditText
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="177dp"
+                android:layout_height="60dp"
+                android:layout_marginTop="20dp"
+                >
+            <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/signup_firstname"
                 android:layout_width="177dp"
                 android:layout_height="50dp"
@@ -49,8 +53,14 @@
                 android:hint="Tên"
                 android:padding="8dp"
                 android:textColor="@color/black" />
-
-            <EditText
+            </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:layout_marginStart="8dp"
+                >
+            <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/signup_lastname"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
@@ -59,11 +69,16 @@
                 android:hint="Họ"
                 android:padding="8dp"
                 android:textColor="@color/black" />
+            </com.google.android.material.textfield.TextInputLayout>
 
         </LinearLayout>
 
-
-        <EditText
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="20dp"
+            >
+        <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/signup_email"
             android:layout_width="match_parent"
             android:layout_height="50dp"
@@ -72,29 +87,39 @@
             android:hint="Email"
             android:padding="8dp"
             android:textColor="@color/black" />
-
-        <EditText
-            android:id="@+id/signup_password"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="20dp"
-            android:drawablePadding="8dp"
-            android:hint="Mật Khẩu"
-            android:inputType="textPassword"
-            android:padding="8dp"
-            android:textColor="@color/black" />
-
-        <EditText
-            android:id="@+id/re_password"
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginTop="20dp"
+            app:passwordToggleEnabled="true">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/signup_password"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:drawablePadding="8dp"
+                android:hint="Mật Khẩu"
+                android:inputType="textPassword"
+                android:padding="8dp"
+                android:textColor="@color/black"
+                />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="20dp"
+            app:passwordToggleEnabled="true">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/re_password"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:drawablePadding="8dp"
             android:hint="Nhập Lại Mật Khẩu"
             android:inputType="textPassword"
             android:padding="8dp"
             android:textColor="@color/black" />
-
+        </com.google.android.material.textfield.TextInputLayout>
         <Button
             android:id="@+id/signup_button"
             android:layout_width="match_parent"
