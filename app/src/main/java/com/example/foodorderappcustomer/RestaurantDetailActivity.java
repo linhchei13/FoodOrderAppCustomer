@@ -324,8 +324,8 @@ public class RestaurantDetailActivity extends AppCompatActivity {
             this,
             restaurantImageUrl, 
             restImageView, 
-            R.drawable.bg, 
-            getRestaurantImage()
+            R.drawable.bg,
+                R.drawable.logo2
         );
     }
 
@@ -375,8 +375,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
                     }
                     
                     // Create menu item
-                    MenuItem menuItem = new MenuItem(id, name, price, category, rating, 
-                            getMenuItemImage(category), description, imageUrl);
+                    MenuItem menuItem = new MenuItem(id, name, price, category, rating, description, imageUrl);
                     menuItem.setRestaurantId(restaurantId);
                     
                     // Add to the list
@@ -433,43 +432,6 @@ public class RestaurantDetailActivity extends AppCompatActivity {
             }
         }
         return name + " là món ăn đặc trưng của nhà hàng, được chế biến từ nguyên liệu tươi ngon.";
-    }
-
-    private int getMenuItemImage(String category) {
-        // Return appropriate image based on category
-        if (category == null) return R.drawable.nemnuong;
-
-        switch (category.toLowerCase()) {
-            case "cơm":
-                return R.drawable.comsuon;
-            case "phở, bún":
-                return R.drawable.buncha;
-            case "đồ uống":
-                return R.drawable.coffe;
-            case "bánh mỳ":
-                return R.drawable.banhmy;
-            default:
-                return R.drawable.nemnuong;
-        }
-    }
-    
-    private int getRestaurantImage() {
-        // Return appropriate image based on cuisine types
-        if (cuisineTypes != null && !cuisineTypes.isEmpty()) {
-            String firstCuisine = cuisineTypes.get(0).toLowerCase();
-            
-            if (firstCuisine.contains("italian") || firstCuisine.contains("pizza")) {
-                return R.drawable.nemnuong;
-            } else if (firstCuisine.contains("japanese") || firstCuisine.contains("sushi")) {
-                return R.drawable.comsuon;
-            } else if (firstCuisine.contains("vietnamese")) {
-                return R.drawable.buncha;
-            } else if (firstCuisine.contains("coffee") || firstCuisine.contains("cafe")) {
-                return R.drawable.coffe;
-            }
-        }
-        
-        return R.drawable.buncha;
     }
 
     private void updateMenuTabs() {
@@ -617,8 +579,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
             quantity,
             menuItem.getCategory(),
             new ArrayList<Option>(),  // No toppings when adding directly from restaurant menu
-            menuItem.getImageUrl(),
-            menuItem.getImageResource()
+            menuItem.getImageUrl()
         );
         
         // Add to cart using CartManager

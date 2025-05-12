@@ -57,6 +57,8 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     // Add these dependencies to your app's build.gradle file
 
+    // Add OkHttp for making HTTP requests
+
 }
 
 

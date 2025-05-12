@@ -14,7 +14,7 @@ public class CartItem implements Serializable {
     private String category;
     private List<Option> toppings;
     private String imageUrl;
-    private int imageResource;
+
 
     // Constructors
     public CartItem() {
@@ -23,7 +23,7 @@ public class CartItem implements Serializable {
     }
 
     public CartItem(String itemId, String restaurantId, String itemName, double itemPrice, String category, 
-                   String imageUrl, int imageResource) {
+                   String imageUrl) {
         this.itemId = itemId;
         this.restaurantId = restaurantId;
         this.itemName = itemName;
@@ -32,11 +32,11 @@ public class CartItem implements Serializable {
         this.category = category;
         this.toppings = new ArrayList<>();
         this.imageUrl = imageUrl;
-        this.imageResource = imageResource;
+
     }
 
     public CartItem(String itemId, String restaurantId, String itemName, double itemPrice, int quantity, 
-                   String category, List<Option> toppings, String imageUrl, int imageResource) {
+                   String category, List<Option> toppings, String imageUrl) {
         this.itemId = itemId;
         this.restaurantId = restaurantId;
         this.itemName = itemName;
@@ -45,7 +45,6 @@ public class CartItem implements Serializable {
         this.category = category;
         this.toppings = toppings != null ? toppings : new ArrayList<>();
         this.imageUrl = imageUrl;
-        this.imageResource = imageResource;
     }
 
     // Getters and setters
@@ -130,13 +129,6 @@ public class CartItem implements Serializable {
         this.imageUrl = imageUrl; 
     }
 
-    public int getImageResource() { 
-        return imageResource; 
-    }
-    
-    public void setImageResource(int imageResource) { 
-        this.imageResource = imageResource; 
-    }
 
     // Calculate total price for this cart item
     public double getTotalPrice() {

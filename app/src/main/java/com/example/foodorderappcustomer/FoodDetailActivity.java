@@ -414,8 +414,7 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
             quantity,
             foodCategory, 
             selectedToppingsList,
-            foodImageUrl,
-            R.drawable.ic_restaurant
+            foodImageUrl
         );
         
         // Add to cart using CartManager

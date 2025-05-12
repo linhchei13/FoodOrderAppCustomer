@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -29,30 +30,32 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HistoryFragment extends Fragment implements OrderAdapter.OnOrderClickListener {
+public class HistoryFragment extends Fragment {
     private TabLayout tabLayout;
-    private RecyclerView recyclerViewOrders;
-    private OrderAdapter adapter;
-    private ProgressBar progressBar;
-    private TextView textError;
-    private View emptyStateLayout;
+    private FrameLayout fragmentContainer;
+    private static final String[] TAB_TITLES = {
+            "Chờ xác nhận",
+            "Đang giao",
+            "Deal đã mua",
+            "Lịch sử",
+            "Đánh giá"
+    };
+    private static final String[] ORDER_STATUSES = {
+            "pending",
+            "contacted",
+            "completed",
+            "all",
+            "rated"
+    };
 
-    // Firebase
-    private FirebaseDatabase database;
-    private DatabaseReference ordersRef;
-    private FirebaseAuth auth;
-
-    public HistoryFragment() {
-        // Required empty public constructor
-    }
-
-    public static HistoryFragment newInstance() {
-        return new HistoryFragment();
+    private void replaceFragment(Fragment fragment) {
+        getFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, fragment).commit();
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+                           Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_history, container, false);
     }
 
@@ -60,144 +63,48 @@ public class HistoryFragment extends Fragment implements OrderAdapter.OnOrderCli
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Initialize Firebase
-        database = FirebaseDatabase.getInstance();
-        ordersRef = database.getReference("orders");
-        auth = FirebaseAuth.getInstance();
-
-        // Initialize views
+        // Initialize TabLayout
         tabLayout = view.findViewById(R.id.tabLayout);
-        recyclerViewOrders = view.findViewById(R.id.recyclerHistory);
-        progressBar = view.findViewById(R.id.progressBar);
-        textError = view.findViewById(R.id.textError);
-        emptyStateLayout = view.findViewById(R.id.emptyStateLayout);
-
-        // Set up TabLayout
         setupTabLayout();
 
-        // Set up RecyclerView
-        setupRecyclerView();
-
-        // Load orders from Firebase
-        loadOrdersFromFirebase();
+        // Load initial fragment
+        loadFragment(0);
     }
 
     private void setupTabLayout() {
+        // Remove existing tabs
+        tabLayout.removeAllTabs();
+
+        // Add tabs
+        for (String title : TAB_TITLES) {
+            tabLayout.addTab(tabLayout.newTab().setText(title));
+        }
+
+        // Set up tab selection listener
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
-                // Handle tab selection
-                String status = "";
-                switch (tab.getPosition()) {
-                    case 0: // Deal đã mua
-                        status = "completed";
-                        break;
-                    case 1: // Lịch sử
-                        status = "all";
-                        break;
-                    case 2: // Đánh giá
-                        status = "rated";
-                        break;
-                    case 3: // Đơn nhập
-                        status = "processing";
-                        break;
-                }
-                loadOrdersFromFirebase(status);
+                loadFragment(tab.getPosition());
             }
 
             @Override
             public void onTabUnselected(TabLayout.Tab tab) {
-                // Handle tab unselection
+                // Not needed
             }
 
             @Override
             public void onTabReselected(TabLayout.Tab tab) {
-                // Handle tab reselection
+                // Not needed
             }
         });
     }
 
-    private void setupRecyclerView() {
-        recyclerViewOrders.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new OrderAdapter(new ArrayList<>(), this);
-        recyclerViewOrders.setAdapter(adapter);
-    }
-
-    private void loadOrdersFromFirebase() {
-        loadOrdersFromFirebase("all");
-    }
-
-    private void loadOrdersFromFirebase(String status) {
-        showLoading(true);
-
-        String userId = auth.getCurrentUser() != null ? auth.getCurrentUser().getUid() : null;
-        if (userId == null) {
-            showError("Vui lòng đăng nhập để xem lịch sử đơn hàng");
-            showLoading(false);
-            return;
-        }
-
-        ordersRef.orderByChild("userId").equalTo(userId)
-                .addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                        List<Order> orders = new ArrayList<>();
-
-                        for (DataSnapshot orderSnapshot : dataSnapshot.getChildren()) {
-                            try {
-                                Order order = orderSnapshot.getValue(Order.class);
-                                if (order != null) {
-                                    if (status.equals("all") || order.getStatus().equals(status)) {
-                                        orders.add(order);
-                                    }
-                                }
-                            } catch (Exception e) {
-                                // Skip this order if there's an error
-                            }
-                        }
-
-                        // Update UI
-                        showLoading(false);
-                        if (orders.isEmpty()) {
-                            showEmptyState(true);
-                        } else {
-                            showEmptyState(false);
-                            adapter.updateData(orders);
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError databaseError) {
-                        showLoading(false);
-                        showError("Không thể tải dữ liệu: " + databaseError.getMessage());
-                    }
-                });
-    }
-
-    private void showLoading(boolean isLoading) {
-        if (progressBar != null) {
-            progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
-        }
-    }
-
-    private void showError(String errorMessage) {
-        if (textError != null) {
-            textError.setText(errorMessage);
-            textError.setVisibility(View.VISIBLE);
-        }
-    }
-
-    private void showEmptyState(boolean isEmpty) {
-        if (emptyStateLayout != null) {
-            emptyStateLayout.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
-        }
-    }
-
-    @Override
-    public void onOrderClick(Order order) {
-        // Start OrderDetailActivity with the order ID
-        Intent intent = new Intent(getActivity(), OrderDetailActivity.class);
-        intent.putExtra("ORDER_ID", order.getId());
-        startActivity(intent);
+    private void loadFragment(int position) {
+        String status = ORDER_STATUSES[position];
+        OrderListFragment fragment = OrderListFragment.newInstance(status);
+        
+        getChildFragmentManager().beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .commit();
     }
 }

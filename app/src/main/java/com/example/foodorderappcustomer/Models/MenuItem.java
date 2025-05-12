@@ -6,7 +6,6 @@ public class MenuItem {
     private double price;
     private String category;
     private float rating;
-    private int imageResource;
     private String imageUrl;
     private String description;
     private String restaurantId;
@@ -17,29 +16,17 @@ public class MenuItem {
         this.price = price;
         this.category = category;
         this.rating = rating;
-        this.imageResource = imageResource;
         this.description = ""; // Default empty description
         this.imageUrl = null;
     }
 
-    public MenuItem(String id, String name, double price, String category, float rating, int imageResource, String description) {
-        this.id = id;
-        this.name = name;
-        this.price = price;
-        this.category = category;
-        this.rating = rating;
-        this.imageResource = imageResource;
-        this.description = description;
-        this.imageUrl = null;
-    }
     
-    public MenuItem(String id, String name, double price, String category, float rating, int imageResource, String description, String imageUrl) {
+    public MenuItem(String id, String name, double price, String category, float rating, String description, String imageUrl) {
         this.id = id;
         this.name = name;
         this.price = price;
         this.category = category;
         this.rating = rating;
-        this.imageResource = imageResource;
         this.description = description;
         this.imageUrl = imageUrl;
     }
@@ -76,10 +63,6 @@ public class MenuItem {
         return description;
     }
 
-    public int getImageResource() {
-        return imageResource;
-    }
-    
     public String getImageUrl() {
         return imageUrl;
     }

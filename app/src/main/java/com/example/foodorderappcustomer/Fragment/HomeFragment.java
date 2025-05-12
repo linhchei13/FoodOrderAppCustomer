@@ -226,14 +226,22 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
 
                                     if (fullAddress.length() > 0) {
                                         addressTextView.setText(fullAddress.toString());
+                                        // Make address clickable to update location
+                                        addressTextView.setOnClickListener(v -> {
+                                            startActivity(new Intent(getContext(), LocationActivity.class));
+                                        });
+                                    } else {
+                                        addressTextView.setText("Thêm địa chỉ của bạn");
+                                        addressTextView.setOnClickListener(v -> {
+                                            startActivity(new Intent(getContext(), LocationActivity.class));
+                                        });
                                     }
-                                }
-                                else {
+                                } else {
+                                    addressTextView.setText("Thêm địa chỉ của bạn");
                                     addressTextView.setOnClickListener(v -> {
                                         startActivity(new Intent(getContext(), LocationActivity.class));
                                     });
                                 }
-
                             }
                         }
 
@@ -434,20 +442,17 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
     private int getCategoryImageResource(String categoryName) {
         // Map category names to drawable resources
         // You should replace these with your actual drawable resources
-        if (categoryName == null) {
-            return R.drawable.banhmy;
-        }
 
         String lowerCaseName = categoryName.toLowerCase();
 
         if (lowerCaseName.contains("pizza")) {
-            return R.drawable.banhmy;
+            return R.drawable.icons_pizza;
         } else if (lowerCaseName.contains("pasta")) {
-            return R.drawable.banhmy;
+            return R.drawable.icons_pho;
         } else if (lowerCaseName.contains("burger") || lowerCaseName.contains("hamburger")) {
-            return R.drawable.banhmy;
+            return R.drawable.icons8_bread;
         } else {
-            return R.drawable.banhmy;
+            return R.drawable.logo2;
         }
     }
 
