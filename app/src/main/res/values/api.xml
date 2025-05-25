@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <string name="app_name">goong-inapbox</string>
     <string name="goong_api_url">https://rsapi.goong.io/</string>
     <string name="goong_map_url">https://tiles.goong.io</string>
