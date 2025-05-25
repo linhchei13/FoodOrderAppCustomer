@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Adapter.CartItemAdapter;
-import com.example.foodorderappcustomer.Models.CartItem;
+import com.example.foodorderappcustomer.Models.FoodItem;
 import com.example.foodorderappcustomer.util.CartManager;
 
 import java.text.NumberFormat;
@@ -75,7 +75,7 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
     }
 
     private void setupRecyclerView() {
-        List<CartItem> items = cartManager.getCartItems();
+        List<FoodItem> items = cartManager.getCartItems();
         cartItemAdapter = new CartItemAdapter(items);
         cartItemAdapter.setListener(this);
         cartItemsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -108,7 +108,7 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
     }
 
     private void updateCartItems() {
-        List<CartItem> cartItems = cartManager.getCartItems();
+        List<FoodItem> cartItems = cartManager.getCartItems();
         if (cartItems.isEmpty()) {
             emptyCartText.setVisibility(View.VISIBLE);
             cartItemsRecyclerView.setVisibility(View.GONE);
@@ -129,17 +129,17 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
     }
 
     @Override
-    public void onCartUpdated(List<CartItem> cartItems, double total) {
+    public void onCartUpdated(List<FoodItem> cartItems, double total) {
         updateCartItems();
     }
 
     @Override
-    public void onQuantityChanged(CartItem cartItem, int newQuantity) {
+    public void onQuantityChanged(FoodItem cartItem, int newQuantity) {
         cartManager.updateItemQuantity(cartItem, newQuantity);
     }
 
     @Override
-    public void onRemoveItem(CartItem cartItem) {
+    public void onRemoveItem(FoodItem cartItem) {
         cartManager.removeItem(cartItem);
         Toast.makeText(this, "Đã xóa món khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
     }

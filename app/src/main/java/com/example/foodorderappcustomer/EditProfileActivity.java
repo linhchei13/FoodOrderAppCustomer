@@ -90,7 +90,6 @@ public class EditProfileActivity extends AppCompatActivity {
                 // Load profile image if exists
                 if (user.getProfileImageUrl() != null && !user.getProfileImageUrl().isEmpty()) {
                     ImageUtils.loadImage(
-                        this,
                         user.getProfileImageUrl(),
                         profileImageView,
                         R.drawable.baseline_person_24,
@@ -166,7 +165,7 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void uploadNewImage(String firstName, String lastName, String email, String phone) {
-        ImageUploadUtils.uploadImage(this, selectedImageUri, "profile_images", new ImageUploadUtils.ImageUploadCallback() {
+        ImageUploadUtils.uploadImage( selectedImageUri, "profile_images", new ImageUploadUtils.ImageUploadCallback() {
             @Override
             public void onSuccess(String downloadUrl) {
                 // Update profile with new image URL

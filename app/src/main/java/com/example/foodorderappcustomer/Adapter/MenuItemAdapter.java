@@ -75,9 +75,6 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
             menuItemImg = itemView.findViewById(R.id.menuItemImg);
             itemName = itemView.findViewById(R.id.itemName);
             itemPrice = itemView.findViewById(R.id.itemPrice);
-            itemDescription = itemView.findViewById(R.id.itemDescription);
-            menuItemRating = itemView.findViewById(R.id.menuItemRating);
-            ratingText = itemView.findViewById(R.id.ratingText);
             addButton = itemView.findViewById(R.id.add);
         }
 
@@ -91,22 +88,21 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
             itemPrice.setText(formattedPrice);
             
             // Set description
-            itemDescription.setText(menuItem.getDescription());
-            
-            // Set rating
-            if (menuItem.getRating() > 0) {
-                menuItemRating.setRating(menuItem.getRating());
-                ratingText.setText(String.format("%.1f", menuItem.getRating()));
-            } else {
-                menuItemRating.setRating(0);
-                ratingText.setText("New");
-            }
+//            itemDescription.setText(menuItem.getDescription());
+//
+//            // Set rating
+//            if (menuItem.getRating() > 0) {
+//                menuItemRating.setRating(menuItem.getRating());
+//                ratingText.setText(String.format("%.1f", menuItem.getRating()));
+//            } else {
+//                menuItemRating.setRating(0);
+//                ratingText.setText("New");
+//            }
 
             // Set image - try to load from Firebase first if image URL is available
             if (menuItem.getImageUrl() != null && !menuItem.getImageUrl().isEmpty()) {
                 // Use ImageUtils to load the image
                 ImageUtils.loadImage(
-                    itemView.getContext(),
                     menuItem.getImageUrl(),
                     menuItemImg,
                     R.drawable.bg,

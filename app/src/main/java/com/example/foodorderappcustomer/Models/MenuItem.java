@@ -10,18 +10,10 @@ public class MenuItem {
     private String description;
     private String restaurantId;
 
-    public MenuItem(String id, String name, double price, String category, float rating, int imageResource) {
-        this.id = id;
-        this.name = name;
-        this.price = price;
-        this.category = category;
-        this.rating = rating;
-        this.description = ""; // Default empty description
-        this.imageUrl = null;
-    }
-
+    private int sales;
     
-    public MenuItem(String id, String name, double price, String category, float rating, String description, String imageUrl) {
+    public MenuItem(String id, String name, double price,
+                    String category, float rating, String description, String imageUrl, int sales) {
         this.id = id;
         this.name = name;
         this.price = price;
@@ -29,6 +21,7 @@ public class MenuItem {
         this.rating = rating;
         this.description = description;
         this.imageUrl = imageUrl;
+        this.sales = sales;
     }
 
     public String getId() {

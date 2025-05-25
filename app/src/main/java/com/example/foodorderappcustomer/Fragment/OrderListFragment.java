@@ -117,6 +117,9 @@ public class OrderListFragment extends Fragment implements OrderAdapter.OnOrderC
                             }
                         }
 
+                        // Sort orders by time in descending order (newest first)
+                        orders.sort((o1, o2) -> o2.getOrderTime().compareTo(o1.getOrderTime()));
+
                         // Update UI
                         showLoading(false);
                         if (orders.isEmpty()) {

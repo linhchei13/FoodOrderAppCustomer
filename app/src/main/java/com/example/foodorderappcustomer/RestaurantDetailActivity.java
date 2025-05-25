@@ -20,7 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Adapter.MenuItemAdapter;
-import com.example.foodorderappcustomer.Models.CartItem;
+import com.example.foodorderappcustomer.Models.FoodItem;
 import com.example.foodorderappcustomer.Models.MenuItem;
 import com.example.foodorderappcustomer.Models.Option;
 import com.example.foodorderappcustomer.util.CartManager;
@@ -321,7 +321,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
     private void loadRestaurantImage() {
         // Use the ImageUtils class to load the image
         ImageUtils.loadImage(
-            this,
+
             restaurantImageUrl, 
             restImageView, 
             R.drawable.bg,
@@ -373,9 +373,14 @@ public class RestaurantDetailActivity extends AppCompatActivity {
                     } else if (snapshot.hasChild("image")) {
                         imageUrl = snapshot.child("image").getValue(String.class);
                     }
-                    
+
+                    int sales= 0;
+                    if (snapshot.hasChild("sales")) {
+                        sales = snapshot.child("sales").getValue(int.class);
+                    }
+
                     // Create menu item
-                    MenuItem menuItem = new MenuItem(id, name, price, category, rating, description, imageUrl);
+                    MenuItem menuItem = new MenuItem(id, name, price, category, rating, description, imageUrl, sales);
                     menuItem.setRestaurantId(restaurantId);
                     
                     // Add to the list
@@ -571,7 +576,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
     // Method to add a menu item to the cart
     private void addToCart(MenuItem menuItem, int quantity) {
         // Create a cart item
-        CartItem cartItem = new CartItem(
+        FoodItem cartItem = new FoodItem(
             menuItem.getId(),
             restaurantId,
             menuItem.getName(),

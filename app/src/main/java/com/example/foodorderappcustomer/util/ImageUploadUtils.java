@@ -27,7 +27,7 @@ public class ImageUploadUtils {
      * @param folder The folder in Firebase Storage to upload to
      * @param callback Callback to handle upload result
      */
-    public static void uploadImage(Context context, Uri imageUri, String folder, ImageUploadCallback callback) {
+    public static void uploadImage(Uri imageUri, String folder, ImageUploadCallback callback) {
         if (imageUri == null) {
             callback.onFailure(new IllegalArgumentException("Image URI cannot be null"));
             return;

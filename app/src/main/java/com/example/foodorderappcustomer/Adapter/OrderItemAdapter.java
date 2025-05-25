@@ -8,15 +8,15 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.foodorderappcustomer.Models.CartItem;
+import com.example.foodorderappcustomer.Models.FoodItem;
 import com.example.foodorderappcustomer.R;
 
 import java.util.List;
 
 public class OrderItemAdapter extends RecyclerView.Adapter<OrderItemAdapter.OrderItemViewHolder> {
-    private List<CartItem> orderItems;
+    private List<FoodItem> orderItems;
 
-    public OrderItemAdapter(List<CartItem> orderItems) {
+    public OrderItemAdapter(List<FoodItem> orderItems) {
         this.orderItems = orderItems;
     }
 
@@ -30,7 +30,7 @@ public class OrderItemAdapter extends RecyclerView.Adapter<OrderItemAdapter.Orde
 
     @Override
     public void onBindViewHolder(@NonNull OrderItemViewHolder holder, int position) {
-        CartItem item = orderItems.get(position);
+        FoodItem item = orderItems.get(position);
         holder.bind(item);
     }
 
@@ -51,7 +51,7 @@ public class OrderItemAdapter extends RecyclerView.Adapter<OrderItemAdapter.Orde
             textItemPrice = itemView.findViewById(R.id.textItemPrice);
         }
 
-        public void bind(CartItem item) {
+        public void bind(FoodItem item) {
             textItemQuantity.setText(item.getQuantity() + "x");
             textItemName.setText(item.getItemName());
             textItemPrice.setText(String.format("%,.0f đ", item.getItemPrice()));

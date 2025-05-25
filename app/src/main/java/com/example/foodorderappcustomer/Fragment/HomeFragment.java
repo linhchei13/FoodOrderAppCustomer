@@ -59,7 +59,7 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
     private List<Restaurant> filteredRestaurantList;
     private List<Promotion> promotionList;
     private FloatingActionButton floatingActionButton;
-    private EditText searchEditText;
+    private TextView searchEditText;
     private TextView welcomeTextView;
     private TextView addressTextView;
     private TextView viewAllCategories;
@@ -106,6 +106,7 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
 
         // Set up search functionality
         setupSearch();
+        setupLocation();
 
         // Set up click listeners
         setupClickListeners();
@@ -141,7 +142,7 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
 
     private void setupCategoryRecyclerView() {
         categoryAdapter = new CategoryAdapter(categoryList);
-        GridLayoutManager layoutManager = new GridLayoutManager(getContext(), 3);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
         categoryRecyclerView.setLayoutManager(layoutManager);
         categoryRecyclerView.setAdapter(categoryAdapter);
     }
@@ -173,6 +174,11 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         });
     }
 
+    private void setupLocation() {
+        addressTextView.setOnClickListener(v -> {
+            startActivity(new Intent(getContext(), LocationActivity.class));
+        });
+    }
     private void filterRestaurants(String query) {
         filteredRestaurantList.clear();
 
@@ -254,37 +260,34 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
     }
 
     private void loadCategories() {
-        databaseReference.child("categories").addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                categoryList.clear();
+        // Clear existing categories
+        categoryList.clear();
 
-                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    String id = snapshot.getKey();
-                    String name = snapshot.child("name").getValue(String.class);
-                    String description = snapshot.child("description").getValue(String.class);
-                    String imageUrl = snapshot.child("imageUrl").getValue(String.class);
+        // Add predefined categories
+        Category cafeTraSua = new Category("1", "Cà phê, Trà sữa", "Các loại cà phê và trà sữa");
+        cafeTraSua.setImageResource(R.drawable.icons_drink);
 
-                    // Create a Category object with default image resource
-                    // You'll need to update your Category model to handle this
-                    Category category = new Category(id, name, description);
+        Category com = new Category("2", "Cơm", "Các món cơm");
+        com.setImageResource(R.drawable.icons_rice);
 
-                    // Set a default image resource based on category name
-                    // This is a temporary solution until you implement image loading from URLs
-                    int imageResource = getCategoryImageResource(name);
-                    category.setImageResource(imageResource);
+        Category bunPho = new Category("3", "Bún, Phở", "Các món bún và phở");
+        bunPho.setImageResource(R.drawable.icons_pho);
 
-                    categoryList.add(category);
-                }
+        Category anVat = new Category("4", "Ăn vặt", "Các món ăn vặt");
+        anVat.setImageResource(R.drawable.icons_pizza);
 
-                categoryAdapter.updateData(categoryList);
-            }
+        Category trangMieng = new Category("5", "Tráng miệng", "Các món tráng miệng");
+        trangMieng.setImageResource(R.drawable.icons_dessert);
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-                Toast.makeText(getContext(), "Lỗi khi tải danh mục", Toast.LENGTH_SHORT).show();
-            }
-        });
+        // Add categories to the list
+        categoryList.add(cafeTraSua);
+        categoryList.add(com);
+        categoryList.add(bunPho);
+        categoryList.add(anVat);
+        categoryList.add(trangMieng);
+
+        // Update adapter
+        categoryAdapter.updateData(categoryList);
     }
 
     private void loadRestaurants() {
@@ -312,6 +315,8 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
                             if (state != null) {
                                 address += ", " + state;
                             }
+                        } else {
+                            address = addressSnapshot.getValue(String.class);
                         }
                     }
 

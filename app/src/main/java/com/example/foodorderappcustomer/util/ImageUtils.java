@@ -8,11 +8,13 @@ import android.widget.ImageView;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.ListResult;
 import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -23,62 +25,69 @@ public class ImageUtils {
 
     public interface ImageListCallback {
         void onSuccess(List<String> imageUrls);
+
         void onFailure(Exception e);
+    }
+
+    public interface ImageUploadCallback {
+        void onSuccess(String downloadUrl);
+        void onFailure(Exception e);
+        void onProgress(double progress);
     }
 
     /**
      * Fetches all images from a specific folder in Firebase Storage
-     * 
+     *
      * @param folderName The folder name in Firebase Storage
-     * @param callback Callback to handle the result
+     * @param callback   Callback to handle the result
      */
     public static void getAllImagesFromFolder(String folderName, ImageListCallback callback) {
         StorageReference folderRef = FirebaseStorage.getInstance().getReference().child(folderName);
-        
+
         folderRef.listAll()
-            .addOnSuccessListener(listResult -> {
-                List<String> imageUrls = new ArrayList<>();
-                List<CompletableFuture<String>> futures = new ArrayList<>();
+                .addOnSuccessListener(listResult -> {
+                    List<String> imageUrls = new ArrayList<>();
+                    List<CompletableFuture<String>> futures = new ArrayList<>();
 
-                for (StorageReference item : listResult.getItems()) {
-                    CompletableFuture<String> future = new CompletableFuture<>();
-                    futures.add(future);
+                    for (StorageReference item : listResult.getItems()) {
+                        CompletableFuture<String> future = new CompletableFuture<>();
+                        futures.add(future);
 
-                    item.getDownloadUrl()
-                        .addOnSuccessListener(uri -> future.complete(uri.toString()))
-                        .addOnFailureListener(e -> {
-                            Log.e(TAG, "Error getting download URL for " + item.getName() + ": " + e.getMessage());
-                            future.complete(null);
-                        });
-                }
+                        item.getDownloadUrl()
+                                .addOnSuccessListener(uri -> future.complete(uri.toString()))
+                                .addOnFailureListener(e -> {
+                                    Log.e(TAG, "Error getting download URL for " + item.getName() + ": " + e.getMessage());
+                                    future.complete(null);
+                                });
+                    }
 
-                // Wait for all futures to complete
-                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                    .thenRun(() -> {
-                        for (CompletableFuture<String> future : futures) {
-                            String url = future.join();
-                            if (url != null) {
-                                imageUrls.add(url);
-                            }
-                        }
-                        callback.onSuccess(imageUrls);
-                    })
-                    .exceptionally(e -> {
-                        callback.onFailure(new Exception("Error processing image URLs: " + e.getMessage()));
-                        return null;
-                    });
-            })
-            .addOnFailureListener(e -> {
-                Log.e(TAG, "Error listing files in " + folderName + ": " + e.getMessage());
-                callback.onFailure(e);
-            });
+                    // Wait for all futures to complete
+                    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                            .thenRun(() -> {
+                                for (CompletableFuture<String> future : futures) {
+                                    String url = future.join();
+                                    if (url != null) {
+                                        imageUrls.add(url);
+                                    }
+                                }
+                                callback.onSuccess(imageUrls);
+                            })
+                            .exceptionally(e -> {
+                                callback.onFailure(new Exception("Error processing image URLs: " + e.getMessage()));
+                                return null;
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error listing files in " + folderName + ": " + e.getMessage());
+                    callback.onFailure(e);
+                });
     }
 
     /**
      * Fetches all images from multiple folders in Firebase Storage
-     * 
+     *
      * @param folderNames List of folder names to search in
-     * @param callback Callback to handle the result
+     * @param callback    Callback to handle the result
      */
     public static void getAllImagesFromFolders(List<String> folderNames, ImageListCallback callback) {
         List<String> allImageUrls = new ArrayList<>();
@@ -105,16 +114,16 @@ public class ImageUtils {
 
         // Wait for all folders to be processed
         CompletableFuture.allOf(folderFutures.toArray(new CompletableFuture[0]))
-            .thenRun(() -> callback.onSuccess(allImageUrls))
-            .exceptionally(e -> {
-                callback.onFailure(new Exception("Error processing folders: " + e.getMessage()));
-                return null;
-            });
+                .thenRun(() -> callback.onSuccess(allImageUrls))
+                .exceptionally(e -> {
+                    callback.onFailure(new Exception("Error processing folders: " + e.getMessage()));
+                    return null;
+                });
     }
 
     /**
      * Deletes an image from Firebase Storage
-     * 
+     *
      * @param imageUrl The URL of the image to delete
      * @param callback Callback to handle the result
      */
@@ -127,14 +136,14 @@ public class ImageUtils {
         try {
             StorageReference imageRef = FirebaseStorage.getInstance().getReferenceFromUrl(imageUrl);
             imageRef.delete()
-                .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "Image deleted successfully");
-                    callback.onSuccess(new ArrayList<>());
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error deleting image: " + e.getMessage());
-                    callback.onFailure(e);
-                });
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "Image deleted successfully");
+                        callback.onSuccess(new ArrayList<>());
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Error deleting image: " + e.getMessage());
+                        callback.onFailure(e);
+                    });
         } catch (Exception e) {
             Log.e(TAG, "Error getting storage reference: " + e.getMessage());
             callback.onFailure(e);
@@ -143,14 +152,13 @@ public class ImageUtils {
 
     /**
      * Loads an image from Firebase Storage or a URL into an ImageView
-     * 
-     * @param context The context
-     * @param imageUrl The image URL or Firebase Storage path
-     * @param imageView The ImageView to load into
+
+     * @param imageUrl         The image URL or Firebase Storage path
+     * @param imageView        The ImageView to load into
      * @param placeholderResId Resource ID for the placeholder image
-     * @param errorResId Resource ID for the error image
+     * @param errorResId       Resource ID for the error image
      */
-    public static void loadImage(Context context, String imageUrl, ImageView imageView, int placeholderResId, int errorResId) {
+    public static void loadImage(String imageUrl, ImageView imageView, int placeholderResId, int errorResId) {
         if (imageUrl == null || imageUrl.isEmpty()) {
             imageView.setImageResource(errorResId);
             return;
@@ -163,95 +171,116 @@ public class ImageUtils {
             imageRef.getDownloadUrl().addOnSuccessListener(uri -> {
                 // Load image with Picasso
                 Picasso.get()
-                    .load(uri.toString())
-                    .placeholder(placeholderResId)
-                    .error(errorResId)
-                    .into(imageView, new Callback() {
-                        @Override
-                        public void onSuccess() {
-                            Log.d(TAG, "Image loaded successfully from gs:// URL");
-                        }
+                        .load(uri.toString())
+                        .placeholder(placeholderResId)
+                        .error(errorResId)
+                        .into(imageView, new Callback() {
+                            @Override
+                            public void onSuccess() {
+                                Log.d(TAG, "Image loaded successfully from gs:// URL");
+                            }
 
-                        @Override
-                        public void onError(Exception e) {
-                            Log.e(TAG, "Error loading image from gs:// URL: " + e.getMessage());
-                        }
-                    });
+                            @Override
+                            public void onError(Exception e) {
+                                Log.e(TAG, "Error loading image from gs:// URL: " + e.getMessage());
+                            }
+                        });
             }).addOnFailureListener(e -> {
                 // On failure, load error image
                 imageView.setImageResource(errorResId);
                 Log.e(TAG, "Error getting download URL: " + e.getMessage());
             });
-        } 
+        }
         // If it's already a HTTP URL
         else if (imageUrl.startsWith("http")) {
             // Load directly with Picasso
             Picasso.get()
-                .load(imageUrl)
-                .placeholder(placeholderResId)
-                .error(errorResId)
-                .into(imageView, new Callback() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d(TAG, "Image loaded successfully from HTTP URL");
-                    }
+                    .load(imageUrl)
+                    .placeholder(placeholderResId)
+                    .error(errorResId)
+                    .into(imageView, new Callback() {
+                        @Override
+                        public void onSuccess() {
+                            Log.d(TAG, "Image loaded successfully from HTTP URL");
+                        }
 
-                    @Override
-                    public void onError(Exception e) {
-                        Log.e(TAG, "Error loading image from HTTP URL: " + e.getMessage());
-                    }
-                });
-        } 
-        // If it's just a file name, try to load from Firebase Storage
-        else {
-            // Try firebase storage with different folders
-            loadImageFromStorageFolder(context, "food_images", imageUrl, imageView, placeholderResId, errorResId);
+                        @Override
+                        public void onError(Exception e) {
+                            Log.e(TAG, "Error loading image from HTTP URL: " + e.getMessage());
+                        }
+                    });
         }
     }
 
-    /**
-     * Attempts to load an image from a specified folder in Firebase Storage
-     *
-     * @param context The context
-     * @param folderName The folder name in Firebase Storage
-     * @param fileName The image file name
-     * @param imageView The ImageView to load into
-     * @param placeholderResId Resource ID for the placeholder image
-     * @param errorResId Resource ID for the error image
-     */
-    private static void loadImageFromStorageFolder(Context context, String folderName, String fileName, 
-                                                 ImageView imageView, int placeholderResId, int errorResId) {
-        // Get reference to the file in Firebase Storage
-        StorageReference storageRef = FirebaseStorage.getInstance().getReference();
-        StorageReference imageRef = storageRef.child(folderName).child(fileName);
-        
-        imageRef.getDownloadUrl().addOnSuccessListener(uri -> {
-            Picasso.get()
-                .load(uri.toString())
-                .placeholder(placeholderResId)
-                .error(errorResId)
-                .into(imageView, new Callback() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d(TAG, "Image loaded successfully from " + folderName);
-                    }
+    public static void uploadImage(Context context, Uri imageUri, String folder, ImageUploadUtils.ImageUploadCallback callback) {
+        if (imageUri == null) {
+            callback.onFailure(new IllegalArgumentException("Image URI cannot be null"));
+            return;
+        }
 
-                    @Override
-                    public void onError(Exception e) {
-                        Log.e(TAG, "Error loading image from " + folderName + ": " + e.getMessage());
-                    }
-                });
-        }).addOnFailureListener(e -> {
-            // If this folder failed, try another common folder
-            if (folderName.equals("food_images")) {
-                loadImageFromStorageFolder(context, "restaurant_images", fileName, imageView, placeholderResId, errorResId);
-            } else if (folderName.equals("restaurant_images")) {
-                loadImageFromStorageFolder(context, "images", fileName, imageView, placeholderResId, errorResId);
-            } else {
-                // If all folders failed, load error image
-                imageView.setImageResource(errorResId);
-                Log.e(TAG, "Error loading image from all folders: " + e.getMessage());
-            }
+        // Create a unique filename
+        String filename = UUID.randomUUID().toString() + ".jpg";
+
+        // Get reference to the storage location
+        StorageReference storageRef = FirebaseStorage.getInstance().getReference();
+        StorageReference imageRef = storageRef.child(folder).child(filename);
+
+        // Upload the file
+        UploadTask uploadTask = imageRef.putFile(imageUri);
+
+        // Monitor upload progress
+        uploadTask.addOnProgressListener(taskSnapshot -> {
+            double progress = (100.0 * taskSnapshot.getBytesTransferred()) / taskSnapshot.getTotalByteCount();
+            callback.onProgress(progress);
+        });
+
+        // Handle upload success
+        uploadTask.addOnSuccessListener(taskSnapshot -> {
+            // Get the download URL
+            imageRef.getDownloadUrl().addOnSuccessListener(uri -> {
+                String downloadUrl = uri.toString();
+                Log.d(TAG, "Image uploaded successfully. URL: " + downloadUrl);
+                callback.onSuccess(downloadUrl);
+            }).addOnFailureListener(e -> {
+                Log.e(TAG, "Error getting download URL: " + e.getMessage());
+                callback.onFailure(e);
+            });
+        });
+
+        // Handle upload failure
+        uploadTask.addOnFailureListener(e -> {
+            Log.e(TAG, "Error uploading image: " + e.getMessage());
+            callback.onFailure(e);
         });
     }
-} 
+
+    /**
+     * Deletes an image from Firebase Storage
+     *
+     * @param imageUrl The URL of the image to delete
+     * @param callback Callback to handle deletion result
+     */
+    public static void deleteImage(String imageUrl, ImageUploadUtils.ImageUploadCallback callback) {
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            callback.onFailure(new IllegalArgumentException("Image URL cannot be null or empty"));
+            return;
+        }
+
+        try {
+            // Get reference to the file
+            StorageReference imageRef = FirebaseStorage.getInstance().getReferenceFromUrl(imageUrl);
+
+            // Delete the file
+            imageRef.delete().addOnSuccessListener(aVoid -> {
+                Log.d(TAG, "Image deleted successfully");
+                callback.onSuccess(null);
+            }).addOnFailureListener(e -> {
+                Log.e(TAG, "Error deleting image: " + e.getMessage());
+                callback.onFailure(e);
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting storage reference: " + e.getMessage());
+            callback.onFailure(e);
+        }
+    }
+}

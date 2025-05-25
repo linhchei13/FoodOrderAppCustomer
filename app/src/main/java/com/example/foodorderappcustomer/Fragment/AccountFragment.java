@@ -105,7 +105,7 @@ public class AccountFragment extends Fragment {
                                 String email = dataSnapshot.child("email").getValue(String.class);
                                 String phone = dataSnapshot.child("phone").getValue(String.class);
                                 String profile_url = dataSnapshot.child("profileImageUrl").getValue(String.class);
-                                ImageUtils.loadImage(getContext(), profile_url, profileImageView, R.drawable.baseline_person_24, R.drawable.baseline_person_24);
+                                ImageUtils.loadImage(profile_url, profileImageView, R.drawable.baseline_person_24, R.drawable.baseline_person_24);
                                 if (firstName != null && lastName != null) {
                                     nameTextView.setText(firstName + " " + lastName);
                                 } else {

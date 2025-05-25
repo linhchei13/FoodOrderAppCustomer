@@ -2,7 +2,6 @@ package com.example.foodorderappcustomer;
 
 import android.os.Bundle;
 import android.util.Log;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.RatingBar;
@@ -10,13 +9,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Adapter.OptionAdapter;
-import com.example.foodorderappcustomer.Models.CartItem;
+import com.example.foodorderappcustomer.Models.FoodItem;
 import com.example.foodorderappcustomer.Models.Option;
 import com.example.foodorderappcustomer.util.CartManager;
 import com.example.foodorderappcustomer.util.ImageUtils;
@@ -234,7 +232,6 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
     private void loadFoodImage() {
         // Use the ImageUtils class to load the image
         ImageUtils.loadImage(
-            this,
             foodImageUrl, 
             foodImageView, 
             R.drawable.edit_text,
@@ -406,7 +403,7 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
         List<Option> selectedToppingsList = new ArrayList<>(selectedToppings.values());
         
         // Create a cart item using the CartItem class
-        CartItem cartItem = new CartItem(
+        FoodItem cartItem = new FoodItem(
             foodId,
             "", // restaurantId (can get from context if needed)
             foodName,

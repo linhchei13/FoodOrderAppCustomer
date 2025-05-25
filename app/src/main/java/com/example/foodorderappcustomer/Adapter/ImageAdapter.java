@@ -36,7 +36,6 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
     public void onBindViewHolder(@NonNull ImageViewHolder holder, int position) {
         String imageUrl = imageUrls.get(position);
         ImageUtils.loadImage(
-            holder.itemView.getContext(),
             imageUrl,
             holder.imageView,
             R.drawable.bg,

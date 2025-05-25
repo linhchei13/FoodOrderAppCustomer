@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class CartItem implements Serializable {
+public class FoodItem {
     private String itemId;
     private String restaurantId;
     private String itemName;
@@ -17,13 +17,13 @@ public class CartItem implements Serializable {
 
 
     // Constructors
-    public CartItem() {
+    public FoodItem() {
         this.toppings = new ArrayList<>();
         this.quantity = 1;
     }
 
-    public CartItem(String itemId, String restaurantId, String itemName, double itemPrice, String category, 
-                   String imageUrl) {
+    public FoodItem(String itemId, String restaurantId, String itemName, double itemPrice, String category,
+                    String imageUrl) {
         this.itemId = itemId;
         this.restaurantId = restaurantId;
         this.itemName = itemName;
@@ -35,8 +35,8 @@ public class CartItem implements Serializable {
 
     }
 
-    public CartItem(String itemId, String restaurantId, String itemName, double itemPrice, int quantity, 
-                   String category, List<Option> toppings, String imageUrl) {
+    public FoodItem(String itemId, String restaurantId, String itemName, double itemPrice, int quantity,
+                    String category, List<Option> toppings, String imageUrl) {
         this.itemId = itemId;
         this.restaurantId = restaurantId;
         this.itemName = itemName;
@@ -145,7 +145,7 @@ public class CartItem implements Serializable {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        CartItem cartItem = (CartItem) o;
+        FoodItem cartItem = (FoodItem) o;
         
         // Basic item equality check
         boolean basicEqual = Objects.equals(itemId, cartItem.itemId);

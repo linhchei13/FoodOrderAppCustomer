@@ -84,6 +84,7 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.OrderViewHol
             textOrderTime.setText(new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
                     .format(order.getOrderTime()));
             textTotal.setText(String.format("%,.0f đ", order.getTotal()));
+
             
             // Set status text and color
             String statusText;
@@ -104,6 +105,14 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.OrderViewHol
                 case "cancelled":
                     statusText = "Đã hủy";
                     statusColor = itemView.getContext().getResources().getColor(R.color.status_cancelled);
+                    break;
+                case "canceled":
+                    statusText = "Đã hủy";
+                    statusColor = itemView.getContext().getResources().getColor(R.color.status_cancelled);
+                    break;
+                case "contacted":
+                    statusText = "Đang giao";
+                    statusColor = itemView.getContext().getResources().getColor(R.color.rebecca_purple);
                     break;
                 default:
                     statusText = order.getStatus();

@@ -33,7 +33,11 @@
             android:textSize="16sp"
             android:maxLines="1"
             android:inputType="text"
-            android:imeOptions="actionSearch"/>
+            android:imeOptions="actionSearch"
+            android:completionThreshold="1"
+            android:dropDownWidth="match_parent"
+            android:dropDownHeight="wrap_content"
+            android:dropDownVerticalOffset="0dp"/>
 
     </LinearLayout>
 
@@ -60,7 +64,8 @@
                 android:layout_height="wrap_content"
                 android:textSize="16sp"
                 android:text="Chọn địa điểm từ kết quả tìm kiếm"
-                android:gravity="center"/>
+                android:gravity="center"
+                android:textColor="@color/black"/>
 
             <TextView
                 android:id="@+id/coordinatesText"

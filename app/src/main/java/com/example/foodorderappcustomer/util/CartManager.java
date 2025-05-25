@@ -7,7 +7,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
-import com.example.foodorderappcustomer.Models.CartItem;
+import com.example.foodorderappcustomer.Models.FoodItem;
 import com.example.foodorderappcustomer.Models.Option;
 import com.example.foodorderappcustomer.Models.Order;
 import com.google.firebase.auth.FirebaseAuth;
@@ -36,14 +36,14 @@ public class CartManager {
     
     private static CartManager instance;
     private final Context context;
-    private final List<CartItem> cartItems;
+    private final List<FoodItem> cartItems;
     private final DatabaseReference databaseReference;
     private final FirebaseAuth firebaseAuth;
     private OnCartUpdateListener onCartUpdateListener;
     
     // Interface for cart update callbacks
     public interface OnCartUpdateListener {
-        void onCartUpdated(List<CartItem> cartItems, double total);
+        void onCartUpdated(List<FoodItem> cartItems, double total);
     }
     
     private CartManager(Context context) {
@@ -67,11 +67,11 @@ public class CartManager {
     }
     
     // Add item to cart
-    public void addItem(CartItem cartItem) {
+    public void addItem(FoodItem cartItem) {
         // Check if item already exists in cart
         boolean itemExists = false;
         for (int i = 0; i < cartItems.size(); i++) {
-            CartItem existingItem = cartItems.get(i);
+            FoodItem existingItem = cartItems.get(i);
             if (existingItem.getItemId().equals(cartItem.getItemId())) {
                 // Check if toppings are the same
                 if (haveSameToppings(existingItem.getToppings(), cartItem.getToppings())) {
@@ -94,7 +94,7 @@ public class CartManager {
     }
     
     // Remove item from cart
-    public void removeItem(CartItem cartItem) {
+    public void removeItem(FoodItem cartItem) {
         cartItems.remove(cartItem);
         saveCart();
         notifyCartUpdated();
@@ -110,11 +110,11 @@ public class CartManager {
     }
     
     // Update item quantity
-    public void updateItemQuantity(CartItem cartItem, int newQuantity) {
+    public void updateItemQuantity(FoodItem cartItem, int newQuantity) {
         if (newQuantity <= 0) {
             removeItem(cartItem);
         } else {
-            for (CartItem item : cartItems) {
+            for (FoodItem item : cartItems) {
                 if (item.getItemId().equals(cartItem.getItemId()) && 
                     haveSameToppings(item.getToppings(), cartItem.getToppings())) {
                     item.setQuantity(newQuantity);
@@ -127,7 +127,7 @@ public class CartManager {
     }
     
     // Update cart item by index
-    public void updateItem(int position, CartItem cartItem) {
+    public void updateItem(int position, FoodItem cartItem) {
         if (position >= 0 && position < cartItems.size()) {
             cartItems.set(position, cartItem);
             saveCart();
@@ -143,14 +143,14 @@ public class CartManager {
     }
     
     // Get all items in cart
-    public List<CartItem> getCartItems() {
+    public List<FoodItem> getCartItems() {
         return new ArrayList<>(cartItems);
     }
     
     // Get total price of items in cart
     public double getCartTotal() {
         double total = 0;
-        for (CartItem item : cartItems) {
+        for (FoodItem item : cartItems) {
             total += item.getTotalPrice();
         }
         return total;
@@ -218,8 +218,8 @@ public class CartManager {
         
         if (json != null) {
             Gson gson = new Gson();
-            Type type = new TypeToken<ArrayList<CartItem>>(){}.getType();
-            List<CartItem> loadedItems = gson.fromJson(json, type);
+            Type type = new TypeToken<ArrayList<FoodItem>>(){}.getType();
+            List<FoodItem> loadedItems = gson.fromJson(json, type);
             
             if (loadedItems != null) {
                 cartItems.clear();
@@ -249,9 +249,9 @@ public class CartManager {
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     // Only load from Firebase if local cart is empty
                     if (cartItems.isEmpty() && dataSnapshot.exists()) {
-                        List<CartItem> firebaseCartItems = new ArrayList<>();
+                        List<FoodItem> firebaseCartItems = new ArrayList<>();
                         for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                            CartItem item = snapshot.getValue(CartItem.class);
+                            FoodItem item = snapshot.getValue(FoodItem.class);
                             if (item != null) {
                                 firebaseCartItems.add(item);
                             }

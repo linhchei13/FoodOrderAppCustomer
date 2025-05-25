@@ -108,7 +108,7 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
             distance.setText(String.format("%s", currencyFormat.format(restaurant.getDeliveryFee())));
             
             // Set restaurant image
-            ImageUtils.loadImage(restaurantImage.getContext(), restaurant.getImageUrl(), restaurantImage, R.drawable.bg, R.drawable.logo2);
+            ImageUtils.loadImage(restaurant.getImageUrl(), restaurantImage, R.drawable.bg, R.drawable.logo2);
 
             
             // Add cuisine type chips
