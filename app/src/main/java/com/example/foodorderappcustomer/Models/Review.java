@@ -2,6 +2,7 @@ package com.example.foodorderappcustomer.Models;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 public class Review {
     private String userId;
@@ -11,6 +12,9 @@ public class Review {
     private String comment;
     private Date timestamp;
     private List<String> imageUrls;
+
+    private Map<String, Reply> replies;
+
 
     public Review() {
         // Required empty constructor for Firebase
@@ -66,6 +70,14 @@ public class Review {
 
     public List<String> getImageUrls() {
         return imageUrls;
+    }
+
+    public Map<String, Reply> getReplies() {
+        return replies;
+    }
+
+    public void setReplies(Map<String, Reply> replies) {
+        this.replies = replies;
     }
 
     public void setImageUrls(List<String> imageUrls) {

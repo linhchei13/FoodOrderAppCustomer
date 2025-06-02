@@ -14,14 +14,22 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Adapter.CartItemAdapter;
-import com.example.foodorderappcustomer.Models.FoodItem;
+import com.example.foodorderappcustomer.Models.CartItem;
+import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.util.CartManager;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.storage.StorageReference;
 
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
-public class CartActivity extends AppCompatActivity implements CartManager.OnCartUpdateListener, CartItemAdapter.CartItemListener {
+public class CartActivity extends AppCompatActivity implements CartManager.OnCartUpdateListener {
 
     // UI Components
     private RecyclerView cartItemsRecyclerView;
@@ -34,8 +42,12 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
 
     // Data
     private CartManager cartManager;
-    private CartItemAdapter cartItemAdapter;
+    private CartItemAdapter restaurantCartAdapter;
     private NumberFormat currencyFormat;
+    DatabaseReference reference;
+    StorageReference storageReference;
+
+    FirebaseAuth firebaseAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,11 +87,40 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
     }
 
     private void setupRecyclerView() {
-        List<FoodItem> items = cartManager.getCartItems();
-        cartItemAdapter = new CartItemAdapter(items);
-        cartItemAdapter.setListener(this);
+        List<CartItem> restaurantCarts = groupItemsByRestaurant(cartManager.getCartItems());
+        restaurantCartAdapter = new CartItemAdapter( restaurantCarts);
         cartItemsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        cartItemsRecyclerView.setAdapter(cartItemAdapter);
+        cartItemsRecyclerView.setAdapter(restaurantCartAdapter);
+    }
+
+    private List<CartItem> groupItemsByRestaurant(List<OrderItem> items) {
+        Map<String, List<OrderItem>> restaurantItemsMap = new HashMap<>();
+        Map<String, String> restaurantNames = new HashMap<>();
+        Map<String, String> restaurantImages = new HashMap<>();
+
+        // Group items by restaurant
+        for (OrderItem item : items) {
+            String restaurantId = item.getRestaurantId();
+            if (!restaurantItemsMap.containsKey(restaurantId)) {
+                restaurantItemsMap.put(restaurantId, new ArrayList<>());
+                restaurantNames.put(restaurantId, item.getRestaurantName());
+            }
+            restaurantItemsMap.get(restaurantId).add(item);
+        }
+
+        // Convert to CartItem list
+        List<CartItem> restaurantCarts = new ArrayList<>();
+        for (String restaurantId : restaurantItemsMap.keySet()) {
+            CartItem cartItem = new CartItem(
+                restaurantId,
+                restaurantNames.get(restaurantId),
+                restaurantImages.get(restaurantId),
+                restaurantItemsMap.get(restaurantId)
+            );
+            restaurantCarts.add(cartItem);
+        }
+
+        return restaurantCarts;
     }
 
     private void setupClickListeners() {
@@ -107,8 +148,13 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
         });
     }
 
+//    public void loadFromFirebase() {
+//        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+//        reference.child("carts").child(currentUser.getUid()).child(res)
+//
+//    }
     private void updateCartItems() {
-        List<FoodItem> cartItems = cartManager.getCartItems();
+        List<OrderItem> cartItems = cartManager.getCartItems();
         if (cartItems.isEmpty()) {
             emptyCartText.setVisibility(View.VISIBLE);
             cartItemsRecyclerView.setVisibility(View.GONE);
@@ -119,7 +165,8 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
             cartItemsRecyclerView.setVisibility(View.VISIBLE);
             checkoutButton.setEnabled(true);
             clearCartButton.setEnabled(true);
-            cartItemAdapter.setCartItems(cartItems);
+            List<CartItem> restaurantCarts = groupItemsByRestaurant(cartItems);
+            restaurantCartAdapter.setCartItems(restaurantCarts);
         }
 
         // Update subtotal
@@ -129,19 +176,8 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
     }
 
     @Override
-    public void onCartUpdated(List<FoodItem> cartItems, double total) {
+    public void onCartUpdated(List<OrderItem> cartItems, double total) {
         updateCartItems();
-    }
-
-    @Override
-    public void onQuantityChanged(FoodItem cartItem, int newQuantity) {
-        cartManager.updateItemQuantity(cartItem, newQuantity);
-    }
-
-    @Override
-    public void onRemoveItem(FoodItem cartItem) {
-        cartManager.removeItem(cartItem);
-        Toast.makeText(this, "Đã xóa món khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -150,4 +186,6 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
         // Refresh cart when returning to this activity
         updateCartItems();
     }
+
+
 } 

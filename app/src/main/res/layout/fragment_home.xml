@@ -30,7 +30,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginBottom="16dp">
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="12dp">
 
             <TextView
                 android:id="@+id/textView"
@@ -95,28 +96,14 @@
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"/>
 
         <!-- Categories Section -->
-        <LinearLayout
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
+            android:layout_weight="1"
+            android:text="Danh mục"
+            android:textSize="20sp"
+            android:textStyle="bold"/>
 
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Danh mục"
-                android:textSize="20sp"
-                android:textStyle="bold"/>
-
-            <TextView
-                android:id="@+id/viewAllCategories"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Xem tất cả"
-                android:textColor="@android:color/holo_blue_dark"
-                android:textSize="14sp"/>
-        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/categoryView"
@@ -139,14 +126,6 @@
                 android:text="Nhà hàng phổ biến"
                 android:textSize="20sp"
                 android:textStyle="bold"/>
-
-            <TextView
-                android:id="@+id/viewAllRestaurants"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Xem tất cả"
-                android:textColor="@android:color/holo_blue_dark"
-                android:textSize="14sp"/>
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -157,19 +136,19 @@
 
         <!-- Nearby Restaurants Section -->
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="Gần đây"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+<!--        <TextView-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginBottom="8dp"-->
+<!--            android:text="Gần đây"-->
+<!--            android:textSize="20sp"-->
+<!--            android:textStyle="bold" />-->
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/nearbyRestaurantsRecyclerView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"/>
+<!--        <androidx.recyclerview.widget.RecyclerView-->
+<!--            android:id="@+id/nearbyRestaurantsRecyclerView"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginBottom="16dp"/>-->
 
     </LinearLayout>
     </androidx.core.widget.NestedScrollView>

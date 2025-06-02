@@ -1,5 +1,8 @@
 package com.example.foodorderappcustomer.Models;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MenuItem {
     private String id;
     private String name;
@@ -9,10 +12,10 @@ public class MenuItem {
     private String imageUrl;
     private String description;
     private String restaurantId;
-
     private int sales;
-    
-    public MenuItem(String id, String name, double price,
+    private int likes;
+    private List<Option> availableOptions;
+      public MenuItem(String id, String name, double price,
                     String category, float rating, String description, String imageUrl, int sales) {
         this.id = id;
         this.name = name;
@@ -22,6 +25,14 @@ public class MenuItem {
         this.description = description;
         this.imageUrl = imageUrl;
         this.sales = sales;
+        this.likes = 0;
+        this.availableOptions = new ArrayList<>();
+    }
+    
+    public MenuItem(String id, String name, double price,
+                   String category, float rating, String description, String imageUrl, int sales, int likes) {
+        this(id, name, price, category, rating, description, imageUrl, sales);
+        this.likes = likes;
     }
 
     public String getId() {
@@ -62,9 +73,43 @@ public class MenuItem {
     
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
-    }
-
-    public void setDescription(String description) {
+    }    public void setDescription(String description) {
         this.description = description;
     }
+    
+    public int getSales() {
+        return sales;
+    }
+
+    public void setSales(int sales) {
+        this.sales = sales;
+    }
+
+    public int getLikes() {
+        return likes;
+    }
+
+    public void setLikes(int likes) {
+        this.likes = likes;
+    }
+
+    public String getStats() {
+        return sales + "k đã bán - " + likes + " lượt thích";
+    }
+
+    public List<Option> getAvailableOptions() {
+        return availableOptions;
+    }
+
+    public void setAvailableOptions(List<Option> availableOptions) {
+        this.availableOptions = availableOptions;
+    }
+
+    public void addOption(Option option) {
+        if (this.availableOptions == null) {
+            this.availableOptions = new ArrayList<>();
+        }
+        this.availableOptions.add(option);
+    }
+
 }

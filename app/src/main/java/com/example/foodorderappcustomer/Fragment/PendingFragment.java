@@ -17,9 +17,8 @@ import android.widget.TextView;
 
 import com.example.foodorderappcustomer.Adapter.OrderAdapter;
 import com.example.foodorderappcustomer.Models.Order;
-import com.example.foodorderappcustomer.OrderDetailActivity;
+import com.example.foodorderappcustomer.OrderInformationActivity;
 import com.example.foodorderappcustomer.R;
-import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -30,11 +29,6 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A simple {@link Fragment} subclass.
- * Use the {@link PendingFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
 public class PendingFragment extends Fragment implements  OrderAdapter.OnOrderClickListener{
     private RecyclerView recyclerViewOrders;
     private OrderAdapter adapter;
@@ -160,7 +154,7 @@ public class PendingFragment extends Fragment implements  OrderAdapter.OnOrderCl
     @Override
     public void onOrderClick(Order order) {
         // Start OrderDetailActivity with the order ID
-        Intent intent = new Intent(getActivity(), OrderDetailActivity.class);
+        Intent intent = new Intent(getActivity(), OrderInformationActivity.class);
         intent.putExtra("ORDER_ID", order.getId());
         startActivity(intent);
     }

@@ -9,40 +9,30 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.foodorderappcustomer.Models.FoodItem;
-import com.example.foodorderappcustomer.Models.Option;
+import com.example.foodorderappcustomer.Models.CartItem;
 import com.example.foodorderappcustomer.R;
 import com.example.foodorderappcustomer.util.ImageUtils;
 
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Collectors;
 
 public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartItemViewHolder> {
 
-    private List<FoodItem> cartItems;
+    private List<CartItem> cartItems;
     private final NumberFormat currencyFormat;
-    private CartItemListener listener;
 
-    public interface CartItemListener {
-        void onQuantityChanged(FoodItem item, int newQuantity);
-        void onRemoveItem(FoodItem item);
-    }
 
-    public CartItemAdapter(List<FoodItem> cartItems) {
+    public CartItemAdapter(List<CartItem> cartItems) {
         this.cartItems = cartItems;
         this.currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
     }
 
-    public void setCartItems(List<FoodItem> cartItems) {
+    public void setCartItems(List<CartItem> cartItems) {
         this.cartItems = cartItems;
         notifyDataSetChanged();
     }
 
-    public void setListener(CartItemListener listener) {
-        this.listener = listener;
-    }
 
     @NonNull
     @Override
@@ -53,7 +43,7 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartIt
 
     @Override
     public void onBindViewHolder(@NonNull CartItemViewHolder holder, int position) {
-        FoodItem cartItem = cartItems.get(position);
+        CartItem cartItem = cartItems.get(position);
         holder.bind(cartItem);
     }
 
@@ -66,46 +56,35 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartIt
         private final ImageView foodImageView;
         private final TextView foodNameTextView;
         private final TextView deliveryTime;
-        private final TextView distance;
+//        private final TextView distance;
         private final TextView quantityTextView;
 
         public CartItemViewHolder(@NonNull View itemView) {
             super(itemView);
             foodImageView = itemView.findViewById(R.id.foodImageView);
-            foodNameTextView = itemView.findViewById(R.id.foodNameTextView);
+            foodNameTextView = itemView.findViewById(R.id.foodName);
             deliveryTime = itemView.findViewById(R.id.deliveryTime);
-            distance = itemView.findViewById(R.id.distance);
+//            distance = itemView.findViewById(R.id.distance);
             quantityTextView = itemView.findViewById(R.id.quantity);
 
         }
 
-        public void bind(FoodItem cartItem) {
+        public void bind(CartItem cartItem) {
             // Set food name
-            foodNameTextView.setText(cartItem.getItemName());
+            foodNameTextView.setText(cartItem.getRestaurantName());
 
             // Set food price
-            String formattedPrice = currencyFormat.format(cartItem.getItemPrice()).replace("₫", "đ");
+            String formattedPrice = currencyFormat.format(cartItem.getTotalPrice()).replace("₫", "đ");
             deliveryTime.setText(formattedPrice);
-
-            // Set toppings text
-            if (cartItem.getToppings() != null && !cartItem.getToppings().isEmpty()) {
-                String toppingsText = "Toppings: " + cartItem.getToppings().stream()
-                        .map(Option::getName)
-                        .collect(Collectors.joining(", "));
-                distance.setText(toppingsText);
-                distance.setVisibility(View.VISIBLE);
-            } else {
-                distance.setVisibility(View.GONE);
-            }
 
             // Set quantity
             quantityTextView.setText(String.valueOf(cartItem.getQuantity()));
 
 
             // Load food image
-            if (cartItem.getImageUrl() != null && !cartItem.getImageUrl().isEmpty()) {
+            if (cartItem.getRestaurantImage() != null && !cartItem.getRestaurantImage().isEmpty()) {
                 ImageUtils.loadImage(
-                        cartItem.getImageUrl(),
+                        cartItem.getRestaurantImage(),
                         foodImageView,
                         R.drawable.ic_restaurant,
                         R.drawable.ic_restaurant

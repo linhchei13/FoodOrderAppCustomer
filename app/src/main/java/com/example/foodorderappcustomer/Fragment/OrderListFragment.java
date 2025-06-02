@@ -16,7 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Adapter.OrderAdapter;
 import com.example.foodorderappcustomer.Models.Order;
-import com.example.foodorderappcustomer.OrderDetailActivity;
+import com.example.foodorderappcustomer.OrderInformationActivity;
 import com.example.foodorderappcustomer.R;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -159,7 +159,7 @@ public class OrderListFragment extends Fragment implements OrderAdapter.OnOrderC
 
     @Override
     public void onOrderClick(Order order) {
-        Intent intent = new Intent(getActivity(), OrderDetailActivity.class);
+        Intent intent = new Intent(getActivity(), OrderInformationActivity.class);
         intent.putExtra("ORDER_ID", order.getId());
         startActivity(intent);
     }

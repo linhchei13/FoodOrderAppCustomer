@@ -80,18 +80,18 @@ public class PromotionAdapter extends RecyclerView.Adapter<PromotionAdapter.Prom
 
         public void bind(Promotion promotion) {
             // Set promotion code
-            promotionCode.setText(promotion.getCode());
+            promotionCode.setText(promotion.getPromoCode());
             
             // Set description
             promotionDescription.setText(promotion.getDescription());
             
             // Format and set validity date
-            String validUntil = "Valid until " + formatDate(promotion.getEndDate());
+            String validUntil = "Có hiệu lực đến" + (promotion.getEndDate());
             promotionValidity.setText(validUntil);
             
             // Set image (temporarily using a placeholder)
             // In a real app, you would use an image loading library like Glide or Picasso
-            promotionImage.setImageResource(R.drawable.nemnuong);
+            promotionImage.setImageResource(R.drawable.logo2);
         }
         
         private String formatDate(Date date) {

@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Adapter.OptionAdapter;
-import com.example.foodorderappcustomer.Models.FoodItem;
+import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.Models.Option;
 import com.example.foodorderappcustomer.util.CartManager;
 import com.example.foodorderappcustomer.util.ImageUtils;
@@ -44,20 +44,17 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
     private TextView foodNameTextView;
     private TextView foodPriceTextView;
     private TextView foodDescriptionTextView;
-    private TextView ingredientsTextView;
     private RecyclerView toppingsRecyclerView;
     private ImageButton decreaseButton;
     private ImageButton increaseButton;
     private TextView quantityTextView;
     private TextView totalPriceTextView;
     private MaterialButton addToCartButton;
-    private RatingBar foodRatingBar;
-    private TextView foodRatingText;
     private TextView foodCategoryText;
     private CollapsingToolbarLayout collapsingToolbar;
 
     // Data
-    private String foodId;
+    private String foodId, restaurantId;
     private String foodName;
     private double foodPrice;
     private String foodDescription;
@@ -105,6 +102,7 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
             finish();
             return;
         }
+        restaurantId = getIntent().getStringExtra("RESTAURANT_ID");
 
         // Load food details
         loadFoodDetails();
@@ -117,13 +115,12 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
         collapsingToolbar = findViewById(R.id.collapsingToolbar);
         backButton = findViewById(R.id.backButton);
         foodImageView = findViewById(R.id.foodImageView);
-        foodNameTextView = findViewById(R.id.foodNameTextView);
+        foodNameTextView = findViewById(R.id.foodName);
         foodPriceTextView = findViewById(R.id.foodPriceTextView);
         foodDescriptionTextView = findViewById(R.id.foodDescriptionTextView);
-        foodRatingBar = findViewById(R.id.foodRatingBar);
-        foodRatingText = findViewById(R.id.foodRatingText);
+//        foodRatingBar = findViewById(R.id.foodRatingBar);
+//        foodRatingText = findViewById(R.id.foodRatingText);
 
-        ingredientsTextView = findViewById(R.id.ingredientsTextView);
         toppingsRecyclerView = findViewById(R.id.toppingsRecyclerView);
         decreaseButton = findViewById(R.id.decreaseButton);
         increaseButton = findViewById(R.id.increaseButton);
@@ -205,8 +202,7 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
 
         // Set category
         // Set rating
-        foodRatingBar.setRating(foodRating);
-        foodRatingText.setText(String.format("%.1f", foodRating));
+
 
         // Format and set food price
         String formattedPrice = currencyFormat.format(foodPrice).replace("₫", "đ");
@@ -214,13 +210,6 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
 
         // Set food description
         foodDescriptionTextView.setText(foodDescription);
-        
-        // Set ingredients
-        if (foodIngredients != null && !foodIngredients.isEmpty()) {
-            ingredientsTextView.setText(String.join(", ", foodIngredients));
-        } else {
-            ingredientsTextView.setText("Không có thông tin");
-        }
 
         // Load food image based on image URL from Firebase or fallback to category image
         loadFoodImage();
@@ -257,9 +246,6 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
                         Option option = new Option(id, name, price);
                         options.add(option);
                     }
-                } else {
-                    // Create sample toppings based on food category
-                    createSampleToppings();
                 }
 
                 // Update toppings RecyclerView
@@ -271,7 +257,6 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
             public void onCancelled(@NonNull DatabaseError databaseError) {
                 Log.e(TAG, "Failed to load toppings: " + databaseError.getMessage());
                 // Create sample toppings as fallback
-                createSampleToppings();
 
                 // Update toppings RecyclerView
                 OptionAdapter adapter = new OptionAdapter(options, FoodDetailActivity.this);
@@ -280,40 +265,6 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
         });
     }
 
-    private void createSampleToppings() {
-        // Create sample toppings based on food category
-        if (foodCategory != null) {
-            switch (foodCategory.toLowerCase()) {
-                case "phở, bún":
-                    options.add(new Option("t1", "Thêm thịt bò", 15000));
-                    options.add(new Option("t2", "Thêm hành", 5000));
-                    options.add(new Option("t3", "Thêm nước dùng", 10000));
-                    break;
-                case "cơm":
-                    options.add(new Option("t1", "Thêm sườn", 20000));
-                    options.add(new Option("t2", "Thêm trứng", 5000));
-                    options.add(new Option("t3", "Thêm cơm", 10000));
-                    break;
-                case "đồ uống":
-                    options.add(new Option("t1", "Thêm đường", 0));
-                    options.add(new Option("t2", "Thêm trân châu", 5000));
-                    options.add(new Option("t3", "Size lớn", 10000));
-                    break;
-                case "bánh mỳ":
-                    options.add(new Option("t1", "Thêm pate", 5000));
-                    options.add(new Option("t2", "Thêm thịt", 10000));
-                    options.add(new Option("t3", "Thêm trứng", 5000));
-                    break;
-                default:
-                    options.add(new Option("t1", "Topping 1", 5000));
-                    options.add(new Option("t2", "Topping 2", 10000));
-                    break;
-            }
-        } else {
-            options.add(new Option("t1", "Topping 1", 5000));
-            options.add(new Option("t2", "Topping 2", 10000));
-        }
-    }
 
     private void setupClickListeners() {
         // Back button
@@ -403,7 +354,7 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
         List<Option> selectedToppingsList = new ArrayList<>(selectedToppings.values());
         
         // Create a cart item using the CartItem class
-        FoodItem cartItem = new FoodItem(
+        OrderItem cartItem = new OrderItem(
             foodId,
             "", // restaurantId (can get from context if needed)
             foodName,

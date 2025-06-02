@@ -3,7 +3,7 @@
     <!-- Base application theme -->
     <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
         <!-- Customize your theme here. -->
-        <item name="colorPrimary">@color/rebecca_purple</item>
+        <item name="colorPrimary">@color/white</item>
         <item name="colorPrimaryDark">@color/rebecca_purple</item>
         <item name="colorAccent">@color/light_purple</item>
     </style>
@@ -24,5 +24,8 @@
     <style name="DialogAnimation">
         <item name="android:windowEnterAnimation">@anim/slide_up</item>
         <item name="android:windowExitAnimation">@anim/slide_down</item>
+    </style>
+    <style name="CustomRatingBar" parent="@android:style/Widget.Material.RatingBar.Small">
+        <item name="colorControlActivated">#FDC009</item> <!-- Màu sao cam hoặc vàng -->
     </style>
 </resources> 

@@ -3,144 +3,111 @@ package com.example.foodorderappcustomer;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
-import android.widget.EditText;
-import android.widget.ListPopupWindow;
-import android.widget.ListView;
-import android.widget.ArrayAdapter;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.ViewGroup;
-import android.widget.PopupWindow;
-import android.graphics.drawable.ColorDrawable;
-import android.graphics.Color;
-import android.widget.AutoCompleteTextView;
-import android.view.inputmethod.InputMethodManager;
-import android.content.Context;
-import android.view.ViewTreeObserver;
-import android.view.WindowManager;
-import android.widget.RelativeLayout;
-import android.view.ViewGroup.LayoutParams;
+import android.util.Log;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ListView;
+import android.widget.ArrayAdapter;
+import android.widget.Toast;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.ImageView;
 
-import androidx.activity.EdgeToEdge;
-import androidx.annotation.NonNull;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.constraintlayout.widget.ConstraintSet;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.example.foodorderappcustomer.API.AutoCompleteApi;
+import com.example.foodorderappcustomer.API.PlaceResponse;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationToken;
+import com.google.android.gms.tasks.CancellationTokenSource;
 
-import java.io.IOException;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import android.util.Log;
 
 public class LocationActivity extends AppCompatActivity {
     private static final String TAG = "LocationActivity";
+    private static final int SEARCH_DEBOUNCE_DELAY = 500; // 500ms delay
+    private static final int MAX_SEARCH_RESULTS = 10;
+    private static final int MIN_SEARCH_LENGTH = 4; // Minimum characters to start search
+
+    private double biasLat = 21.0285;
+    private double biasLong = 105.8542;
+    private static final int RADIUS = 200; // 200km radius around
+
     private EditText searchEditText;
-    private TextView selectedLocationText;
-    private TextView coordinatesText;
-    private Button confirmButton;
-    private FirebaseAuth firebaseAuth;
-    private DatabaseReference databaseReference;
+    private ListView suggestionsListView;
     private ArrayAdapter<String> adapter;
     private List<String> searchResults;
-    private JsonObject selectedLocation;
-    private boolean isAddressSelected = false;
-    private OkHttpClient client;
-    private Gson gson;
-    private ListView suggestionsListView;
-    private ConstraintLayout mainLayout;
+    private List<PlaceResponse.Predictions> predictions;
+    private AutoCompleteApi placeApi;
+    private String goongApiKey;
+    private Handler searchHandler = new Handler(Looper.getMainLooper());
+    private Runnable searchRunnable;
+    
+    private FusedLocationProviderClient fusedLocationClient;
+    private ImageView clearButton;
+    private ImageButton backButton;
+    private ActivityResultLauncher<String> requestPermissionLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_location);
 
-        // Initialize views
-        searchEditText = findViewById(R.id.autocomplete_fragment);
-        selectedLocationText = findViewById(R.id.selectedLocationText);
-        coordinatesText = findViewById(R.id.coordinatesText);
-        confirmButton = findViewById(R.id.confirmButton);
-        mainLayout = findViewById(R.id.main);
+        // Initialize location services
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        
+        // Initialize permission launcher
+        requestPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            isGranted -> {
+                if (isGranted) {
+                    getCurrentLocation();
+                } else {
+                    Toast.makeText(this, "Cần quyền truy cập vị trí để sử dụng tính năng này", Toast.LENGTH_SHORT).show();
+                }
+            }
+        );
 
-        // Initialize Firebase
-        firebaseAuth = FirebaseAuth.getInstance();
-        databaseReference = FirebaseDatabase.getInstance().getReference();
+        initViews();
+        initApi();
+        getCurrentLocation();
+        setupSearch();
+        backButton.setOnClickListener(v -> finish());
+    }
 
-        // Initialize OkHttp and Gson
-        client = new OkHttpClient();
-        gson = new Gson();
+    private void initViews() {
+        searchEditText = findViewById(R.id.searchEditText);
+        suggestionsListView = findViewById(R.id.suggestionsListView);
+        clearButton = findViewById(R.id.clearButton);
+        backButton = findViewById(R.id.backButton);
 
         // Initialize search results list and adapter
         searchResults = new ArrayList<>();
-        adapter = new ArrayAdapter<>(this, 
-            android.R.layout.simple_list_item_1, 
-            searchResults);
-
-        // Create and setup ListView for suggestions
-        suggestionsListView = new ListView(this);
+        predictions = new ArrayList<>();
+        adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_list_item_1,
+                searchResults);
         suggestionsListView.setAdapter(adapter);
-        suggestionsListView.setDivider(new ColorDrawable(Color.LTGRAY));
-        suggestionsListView.setDividerHeight(1);
-        suggestionsListView.setBackgroundColor(Color.WHITE);
-        
-        // Add ListView to layout
-        ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(
-            LayoutParams.MATCH_PARENT,
-            LayoutParams.WRAP_CONTENT
-        );
-        suggestionsListView.setId(View.generateViewId());
-        suggestionsListView.setLayoutParams(params);
-        suggestionsListView.setVisibility(View.GONE);
-        mainLayout.addView(suggestionsListView);
+    }
 
-        // Set constraints for ListView
-        ConstraintSet constraintSet = new ConstraintSet();
-        constraintSet.clone(mainLayout);
-        constraintSet.connect(suggestionsListView.getId(), ConstraintSet.TOP, R.id.search_bar, ConstraintSet.BOTTOM, 0);
-        constraintSet.connect(suggestionsListView.getId(), ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0);
-        constraintSet.connect(suggestionsListView.getId(), ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, 0);
-        constraintSet.applyTo(mainLayout);
-
-        // Set up search functionality
-        setupSearch();
-
-        // Set up confirm button
-        setupConfirmButton();
-
-        // Apply window insets
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+    private void initApi() {
+        placeApi = AutoCompleteApi.apiInterface;
+        goongApiKey = getString(R.string.goong_api_key); // Make sure you have this in strings.xml
     }
 
     private void setupSearch() {
@@ -150,15 +117,23 @@ public class LocationActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                Log.d(TAG, "Text changed: " + s.toString());
-                if (s.length() > 0) {
-                    isAddressSelected = false;
-                    fetchAddressSuggestions(s.toString());
-                } else {
-                    searchResults.clear();
-                    adapter.notifyDataSetChanged();
-                    suggestionsListView.setVisibility(View.GONE);
+                // Cancel previous search
+                if (searchRunnable != null) {
+                    searchHandler.removeCallbacks(searchRunnable);
                 }
+
+                // Create new search runnable
+                searchRunnable = () -> {
+                    String query = s.toString().trim();
+                    if (query.length() >= MIN_SEARCH_LENGTH) {
+                        fetchAddressSuggestions(query);
+                    } else {
+                        clearSuggestions();
+                    }
+                };
+
+                // Post delayed search
+                searchHandler.postDelayed(searchRunnable, SEARCH_DEBOUNCE_DELAY);
             }
 
             @Override
@@ -166,236 +141,142 @@ public class LocationActivity extends AppCompatActivity {
         });
 
         suggestionsListView.setOnItemClickListener((parent, view, position, id) -> {
-            String selectedAddress = searchResults.get(position);
-            Log.d(TAG, "Selected address: " + selectedAddress);
-            searchEditText.setText(selectedAddress);
-            isAddressSelected = true;
-            suggestionsListView.setVisibility(View.GONE);
-            
-            // Hide keyboard after selection
-            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(searchEditText.getWindowToken(), 0);
-            
-            if (selectedLocation != null) {
-                updateLocationDisplay(selectedLocation);
+            if (position < predictions.size()) {
+                PlaceResponse.Predictions selectedPlace = predictions.get(position);
+                String selectedAddress = searchResults.get(position);
+
+                // Return selected location to calling activity
+                Intent resultIntent = new Intent();
+                resultIntent.putExtra("selected_address", selectedAddress);
+                resultIntent.putExtra("place_id", selectedPlace.getPlaceId());
+
+                // You can also add coordinates if needed
+                setResult(RESULT_OK, resultIntent);
+                finish();
             }
         });
 
-        // Add focus change listener
-        searchEditText.setOnFocusChangeListener((v, hasFocus) -> {
-            Log.d(TAG, "Focus changed: " + hasFocus);
-            if (hasFocus && !searchResults.isEmpty()) {
-                Log.d(TAG, "Showing suggestions on focus");
-                suggestionsListView.setVisibility(View.VISIBLE);
-            } else {
-                suggestionsListView.setVisibility(View.GONE);
-            }
-        });
-
-        // Add touch listener to show suggestions on touch
-        searchEditText.setOnTouchListener((v, event) -> {
-            Log.d(TAG, "Touch event received");
-            if (!searchResults.isEmpty()) {
-                Log.d(TAG, "Showing suggestions on touch");
-                suggestionsListView.setVisibility(View.VISIBLE);
-            }
-            return false;
+        clearButton.setOnClickListener(v -> {
+            searchEditText.setText("");
+            clearSuggestions();
         });
     }
 
-    private void fetchAddressSuggestions(String query) {
-        if (isAddressSelected) {
+    private void setupCurrentLocationButton() {
+        clearButton.setOnClickListener(v -> {
+            if (checkLocationPermission()) {
+                getCurrentLocation();
+            } else {
+                requestLocationPermission();
+            }
+        });
+    }
+
+    private boolean checkLocationPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+            == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestLocationPermission() {
+        requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+    }
+
+    private void getCurrentLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+            != PackageManager.PERMISSION_GRANTED) {
             return;
         }
 
-        String url = "https://photon.komoot.io/api/?q=" + Uri.encode(query) + "&limit=5&countrycodes=vn";
-        Log.d(TAG, "Fetching address suggestions for: " + url);
-        Request request = new Request.Builder().url(url).build();
+        CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        CancellationToken cancellationToken = cancellationTokenSource.getToken();
 
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                Log.e(TAG, "API call failed", e);
-                runOnUiThread(() -> {
-                    Toast.makeText(LocationActivity.this, 
-                        "Lỗi tìm kiếm địa điểm: " + e.getMessage(), 
-                        Toast.LENGTH_SHORT).show();
-                });
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (response.isSuccessful() && response.body() != null) {
-                    String responseBody = response.body().string();
-                    Log.d(TAG, "API Response: " + responseBody);
-                    
-                    try {
-                        JsonObject jsonResponse = JsonParser.parseString(responseBody).getAsJsonObject();
-                        JsonArray features = jsonResponse.getAsJsonArray("features");
-                        
-                        runOnUiThread(() -> {
-                            searchResults.clear();
-                            if (features != null && features.size() > 0) {
-                                Log.d(TAG, "Found " + features.size() + " features");
-                                for (int i = 0; i < features.size(); i++) {
-                                    JsonObject feature = features.get(i).getAsJsonObject();
-                                    JsonObject properties = feature.getAsJsonObject("properties");
-                                    
-                                    // Build full address
-                                    StringBuilder fullAddress = new StringBuilder();
-                                    
-                                    // Log each property for debugging
-                                    Log.d(TAG, "Feature " + i + " properties: " + properties.toString());
-                                    
-                                    if (properties.has("housenumber") && !properties.get("housenumber").isJsonNull()) {
-                                        fullAddress.append(properties.get("housenumber").getAsString()).append(" ");
-                                    }
-                                    if (properties.has("street") && !properties.get("street").isJsonNull()) {
-                                        fullAddress.append(properties.get("street").getAsString());
-                                    }
-                                    if (properties.has("city") && !properties.get("city").isJsonNull()) {
-                                        if (fullAddress.length() > 0) fullAddress.append(", ");
-                                        fullAddress.append(properties.get("city").getAsString());
-                                    }
-                                    if (properties.has("state") && !properties.get("state").isJsonNull()) {
-                                        if (fullAddress.length() > 0) fullAddress.append(", ");
-                                        fullAddress.append(properties.get("state").getAsString());
-                                    }
-                                    
-                                    String address = fullAddress.toString();
-                                    Log.d(TAG, "Built address: " + address);
-                                    if (!address.isEmpty()) {
-                                        searchResults.add(address);
-                                    }
-                                }
-                                
-                                // Update adapter and show suggestions
-                                adapter.notifyDataSetChanged();
-                                Log.d(TAG, "Adapter updated with " + searchResults.size() + " items");
-                                
-                                if (searchEditText.hasFocus()) {
-                                    Log.d(TAG, "Showing suggestions after adapter update");
-                                    suggestionsListView.setVisibility(View.VISIBLE);
-                                }
-                                
-                                // Store the first result as selected location
-                                if (!searchResults.isEmpty()) {
-                                    selectedLocation = features.get(0).getAsJsonObject();
-                                    updateLocationDisplay(selectedLocation);
-                                }
-                            } else {
-                                Log.d(TAG, "No features found in response");
-                                adapter.notifyDataSetChanged();
-                                suggestionsListView.setVisibility(View.GONE);
-                            }
-                        });
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error parsing JSON response", e);
-                        runOnUiThread(() -> {
-                            Toast.makeText(LocationActivity.this,
-                                "Lỗi xử lý kết quả tìm kiếm",
-                                Toast.LENGTH_SHORT).show();
-                        });
-                    }
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellationToken)
+            .addOnSuccessListener(location -> {
+                if (location != null) {
+                    // Use the location to search for address
+                    biasLat = location.getLatitude();
+                    biasLong = location.getLongitude();
                 } else {
-                    Log.e(TAG, "API call unsuccessful: " + response.code());
-                    runOnUiThread(() -> {
-                        Toast.makeText(LocationActivity.this,
-                            "Không thể kết nối đến máy chủ",
-                            Toast.LENGTH_SHORT).show();
-                    });
+                    Toast.makeText(this, "Không thể lấy vị trí hiện tại", Toast.LENGTH_SHORT).show();
                 }
-            }
-        });
+            })
+            .addOnFailureListener(e -> {
+                Toast.makeText(this, "Lỗi khi lấy vị trí: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            });
     }
 
-    private void updateLocationDisplay(JsonObject feature) {
-        try {
-            Log.d(TAG, "Updating location display with feature: " + feature.toString());
-            selectedLocation = feature;
-            JsonObject properties = feature.getAsJsonObject("properties");
-            JsonArray coordinates = feature.getAsJsonObject("geometry").getAsJsonArray("coordinates");
-            
-            // Build full address
-            StringBuilder fullAddress = new StringBuilder();
-            
-            if (properties.has("housenumber") && !properties.get("housenumber").isJsonNull()) {
-                fullAddress.append(properties.get("housenumber").getAsString()).append(" ");
-            }
-            if (properties.has("street") && !properties.get("street").isJsonNull()) {
-                fullAddress.append(properties.get("street").getAsString());
-            }
-            if (properties.has("city") && !properties.get("city").isJsonNull()) {
-                if (fullAddress.length() > 0) fullAddress.append(", ");
-                fullAddress.append(properties.get("city").getAsString());
-            }
-            if (properties.has("state") && !properties.get("state").isJsonNull()) {
-                if (fullAddress.length() > 0) fullAddress.append(", ");
-                fullAddress.append(properties.get("state").getAsString());
-            }
+    private void fetchAddressSuggestions(String query) {
+        Log.d(TAG, "Fetching address suggestions for: " + query);
 
-            String address = fullAddress.toString();
-            Log.d(TAG, "Final address to display: " + address);
+        // Add location bias and restriction for Hanoi
+        String locationBias = biasLat + "," + biasLong;
+        String locationRestriction = Double.toString(RADIUS);
 
-            if (coordinates != null && coordinates.size() >= 2) {
-                double longitude = coordinates.get(0).getAsDouble();
-                double latitude = coordinates.get(1).getAsDouble();
-                
-                selectedLocationText.setText(address);
-                coordinatesText.setText(String.format("Tọa độ: %.6f, %.6f", latitude, longitude));
-                
-                Log.d(TAG, "Updated UI with address: " + address + " and coordinates: " + latitude + ", " + longitude);
-            } else {
-                Log.e(TAG, "Invalid coordinates in feature");
-                Toast.makeText(this, "Không thể xác định tọa độ", Toast.LENGTH_SHORT).show();
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error updating location display", e);
-            Toast.makeText(this, "Lỗi hiển thị địa chỉ", Toast.LENGTH_SHORT).show();
-        }
-    }
+        placeApi.getPlace(goongApiKey, query, MAX_SEARCH_RESULTS, locationBias, locationRestriction)
+                .enqueue(new Callback<PlaceResponse>() {
+                    @Override
+                    public void onResponse(Call<PlaceResponse> call, Response<PlaceResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            PlaceResponse placeResponse = response.body();
+                            if (placeResponse.getPredictions() != null && !placeResponse.getPredictions().isEmpty()) {
+                                processSearchResults(placeResponse.getPredictions());
+                            } else {
+                                clearSuggestions();
+                            }
+                        } else {
+                            Log.e(TAG, "API response not successful: " + response.code());
+                            showError("Không thể tìm kiếm địa điểm");
+                        }
+                    }
 
-    private void setupConfirmButton() {
-        confirmButton.setOnClickListener(v -> {
-            if (selectedLocation != null) {
-                saveLocationToFirebase(selectedLocation);
-            } else {
-                Toast.makeText(this, "Vui lòng chọn một địa điểm", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void saveLocationToFirebase(JsonObject location) {
-        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
-        if (currentUser != null) {
-            Map<String, Object> addressMap = new HashMap<>();
-            JsonObject properties = location.getAsJsonObject("properties");
-            JsonArray coordinates = location.getAsJsonObject("geometry").getAsJsonArray("coordinates");
-            
-            if (properties.has("street")) addressMap.put("street", properties.get("street").getAsString());
-            if (properties.has("city")) addressMap.put("city", properties.get("city").getAsString());
-            if (properties.has("state")) addressMap.put("state", properties.get("state").getAsString());
-            if (properties.has("country")) addressMap.put("country", properties.get("country").getAsString());
-            if (properties.has("postcode")) addressMap.put("postcode", properties.get("postcode").getAsString());
-            if (properties.has("housenumber")) addressMap.put("houseNumber", properties.get("housenumber").getAsString());
-            
-            addressMap.put("latitude", coordinates.get(1).getAsDouble());
-            addressMap.put("longitude", coordinates.get(0).getAsDouble());
-
-            databaseReference.child("users").child(currentUser.getUid())
-                .child("address")
-                .setValue(addressMap)
-                .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(LocationActivity.this, 
-                        "Đã lưu địa chỉ thành công", 
-                        Toast.LENGTH_SHORT).show();
-                    finish();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(LocationActivity.this, 
-                        "Lỗi khi lưu địa chỉ: " + e.getMessage(), 
-                        Toast.LENGTH_SHORT).show();
+                    @Override
+                    public void onFailure(Call<PlaceResponse> call, Throwable t) {
+                        Log.e(TAG, "API call failed", t);
+                        showError("Lỗi kết nối mạng");
+                    }
                 });
+    }
+
+    private void processSearchResults(List<PlaceResponse.Predictions> newPredictions) {
+        runOnUiThread(() -> {
+            searchResults.clear();
+            predictions.clear();
+
+            for (PlaceResponse.Predictions prediction : newPredictions) {
+                String mainText = prediction.getStructuredFormatting().getMainText();
+                String secondaryText = prediction.getStructuredFormatting().getSecondaryText();
+                String suggestion = String.format("%s, %s", mainText, secondaryText);
+
+                searchResults.add(suggestion);
+                predictions.add(prediction);
+            }
+
+            adapter.notifyDataSetChanged();
+            suggestionsListView.setVisibility(searchResults.isEmpty() ? View.GONE : View.VISIBLE);
+        });
+    }
+
+    private void clearSuggestions() {
+        runOnUiThread(() -> {
+            searchResults.clear();
+            predictions.clear();
+            adapter.notifyDataSetChanged();
+            suggestionsListView.setVisibility(View.GONE);
+        });
+    }
+
+    private void showError(String message) {
+        runOnUiThread(() -> {
+            Toast.makeText(LocationActivity.this, message, Toast.LENGTH_SHORT).show();
+            clearSuggestions();
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (searchRunnable != null) {
+            searchHandler.removeCallbacks(searchRunnable);
         }
     }
 }

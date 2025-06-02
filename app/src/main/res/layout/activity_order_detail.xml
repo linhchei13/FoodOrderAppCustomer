@@ -5,7 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".OrderDetailActivity">
+    tools:context=".OrderInformationActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
@@ -390,6 +390,7 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
@@ -403,16 +404,26 @@
         android:textColor="@android:color/white"
         app:backgroundTint="@color/status_cancelled"
         android:visibility="gone" />
-
     <com.google.android.material.button.MaterialButton
         android:id="@+id/buttonMarkAsCompleted"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center"
         android:layout_margin="16dp"
-        android:text="Đã nhận hàng"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/quantum_googgreen"
+        android:text="Xác nhận đã nhận hàng"
+        android:visibility="gone"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonReview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_margin="16dp"
         android:textColor="@android:color/white"
-        app:backgroundTint="@color/status_completed"
-        android:visibility="gone" />
+        app:backgroundTint="@color/rebecca_purple"
+        android:text="Đánh giá đơn hàng"
+        android:visibility="gone"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

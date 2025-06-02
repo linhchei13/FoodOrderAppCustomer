@@ -1,9 +1,7 @@
 package com.example.foodorderappcustomer.Models;
 
-
 import java.util.HashMap;
 import java.util.Map;
-
 
 public class User {
     private String userId;
@@ -12,7 +10,7 @@ public class User {
     private String email;
     private String phone;
     private String profileImageUrl;
-    private String address;
+    private Map<String, Object> address;
     private long createdAt;
 
     // Default constructor required for Firebase
@@ -26,7 +24,7 @@ public class User {
         this.email = email;
         this.phone = "";
         this.profileImageUrl = "";
-        this.address = "";
+        this.address = new HashMap<>();
         this.createdAt = System.currentTimeMillis();
     }
 
@@ -37,7 +35,7 @@ public class User {
         this.email = email;
         this.phone = phone;
         this.profileImageUrl = "";
-        this.address = "";
+        this.address = new HashMap<>();
         this.createdAt = System.currentTimeMillis();
     }
 
@@ -48,7 +46,7 @@ public class User {
         this.email = email;
         this.phone = phone;
         this.profileImageUrl = profileImageUrl;
-        this.address = "";
+        this.address = new HashMap<>();
         this.createdAt = System.currentTimeMillis();
     }
 
@@ -100,11 +98,11 @@ public class User {
         this.profileImageUrl = profileImageUrl;
     }
 
-    public String getAddress() {
+    public Map<String, Object> getAddress() {
         return address;
     }
 
-    public void setAddress(String address) {
+    public void setAddress(Map<String, Object> address) {
         this.address = address;
     }
 
@@ -120,6 +118,25 @@ public class User {
         return firstName + " " + lastName;
     }
 
+    // Helper method to get formatted address
+    @com.google.firebase.database.Exclude
+    public String getFormattedAddress() {
+        if (address != null && address.containsKey("formattedAddress")) {
+            Object addr = address.get("formattedAddress");
+            return addr != null ? addr.toString() : "";
+        }
+        return "";
+    }
+
+    // Helper method to set formatted address
+    @com.google.firebase.database.Exclude
+    public void setFormattedAddress(String formattedAddress) {
+        if (address == null) {
+            address = new HashMap<>();
+        }
+        address.put("formattedAddress", formattedAddress);
+        address.put("lastUsed", System.currentTimeMillis());
+    }
 
     public Map<String, Object> toMap() {
         HashMap<String, Object> result = new HashMap<>();

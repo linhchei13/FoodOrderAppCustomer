@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Models.Restaurant;
 import com.example.foodorderappcustomer.R;
-import com.example.foodorderappcustomer.RestaurantDetailActivity;
+import com.example.foodorderappcustomer.RestaurantMenuActivity;
 import com.example.foodorderappcustomer.util.ImageUtils;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -53,7 +53,7 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
 
         // Set click listener to open RestaurantDetailActivity
         holder.itemView.setOnClickListener(v -> {
-            Intent intent = new Intent(context, RestaurantDetailActivity.class);
+            Intent intent = new Intent(context, RestaurantMenuActivity.class);
             intent.putExtra("RESTAURANT_ID", restaurant.getId());
             intent.putExtra("RESTAURANT_NAME", restaurant.getName());
             context.startActivity(intent);

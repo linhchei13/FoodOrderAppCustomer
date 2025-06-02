@@ -33,7 +33,7 @@ public class ReviewImageAdapter extends RecyclerView.Adapter<ReviewImageAdapter.
     @Override
     public ImageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_review_image, parent, false);
+                .inflate(R.layout.item_image_upload, parent, false);
         return new ImageViewHolder(view);
     }
 

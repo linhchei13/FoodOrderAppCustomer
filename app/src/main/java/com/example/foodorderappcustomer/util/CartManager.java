@@ -7,7 +7,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
-import com.example.foodorderappcustomer.Models.FoodItem;
+import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.Models.Option;
 import com.example.foodorderappcustomer.Models.Order;
 import com.google.firebase.auth.FirebaseAuth;
@@ -36,14 +36,14 @@ public class CartManager {
     
     private static CartManager instance;
     private final Context context;
-    private final List<FoodItem> cartItems;
+    private final List<OrderItem> cartItems;
     private final DatabaseReference databaseReference;
     private final FirebaseAuth firebaseAuth;
     private OnCartUpdateListener onCartUpdateListener;
     
     // Interface for cart update callbacks
     public interface OnCartUpdateListener {
-        void onCartUpdated(List<FoodItem> cartItems, double total);
+        void onCartUpdated(List<OrderItem> cartItems, double total);
     }
     
     private CartManager(Context context) {
@@ -52,7 +52,6 @@ public class CartManager {
         this.databaseReference = FirebaseDatabase.getInstance().getReference();
         this.firebaseAuth = FirebaseAuth.getInstance();
         loadCartFromLocal();
-        syncWithFirebase();
     }
     
     public static synchronized CartManager getInstance(Context context) {
@@ -67,11 +66,11 @@ public class CartManager {
     }
     
     // Add item to cart
-    public void addItem(FoodItem cartItem) {
+    public void addItem(OrderItem cartItem) {
         // Check if item already exists in cart
         boolean itemExists = false;
         for (int i = 0; i < cartItems.size(); i++) {
-            FoodItem existingItem = cartItems.get(i);
+            OrderItem existingItem = cartItems.get(i);
             if (existingItem.getItemId().equals(cartItem.getItemId())) {
                 // Check if toppings are the same
                 if (haveSameToppings(existingItem.getToppings(), cartItem.getToppings())) {
@@ -94,7 +93,7 @@ public class CartManager {
     }
     
     // Remove item from cart
-    public void removeItem(FoodItem cartItem) {
+    public void removeItem(OrderItem cartItem) {
         cartItems.remove(cartItem);
         saveCart();
         notifyCartUpdated();
@@ -110,11 +109,11 @@ public class CartManager {
     }
     
     // Update item quantity
-    public void updateItemQuantity(FoodItem cartItem, int newQuantity) {
+    public void updateItemQuantity(OrderItem cartItem, int newQuantity) {
         if (newQuantity <= 0) {
             removeItem(cartItem);
         } else {
-            for (FoodItem item : cartItems) {
+            for (OrderItem item : cartItems) {
                 if (item.getItemId().equals(cartItem.getItemId()) && 
                     haveSameToppings(item.getToppings(), cartItem.getToppings())) {
                     item.setQuantity(newQuantity);
@@ -127,7 +126,7 @@ public class CartManager {
     }
     
     // Update cart item by index
-    public void updateItem(int position, FoodItem cartItem) {
+    public void updateItem(int position, OrderItem cartItem) {
         if (position >= 0 && position < cartItems.size()) {
             cartItems.set(position, cartItem);
             saveCart();
@@ -143,14 +142,14 @@ public class CartManager {
     }
     
     // Get all items in cart
-    public List<FoodItem> getCartItems() {
+    public List<OrderItem> getCartItems() {
         return new ArrayList<>(cartItems);
     }
     
     // Get total price of items in cart
     public double getCartTotal() {
         double total = 0;
-        for (FoodItem item : cartItems) {
+        for (OrderItem item : cartItems) {
             total += item.getTotalPrice();
         }
         return total;
@@ -196,31 +195,31 @@ public class CartManager {
     // Save cart to SharedPreferences and Firebase
     private void saveCart() {
         saveCartToLocal();
-        saveCartToFirebase();
+//        saveCartToFirebase();
     }
     
     // Save cart to SharedPreferences
     private void saveCartToLocal() {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
-        
+
         Gson gson = new Gson();
         String json = gson.toJson(cartItems);
-        
+
         editor.putString(CART_ITEMS_KEY, json);
         editor.apply();
     }
     
-    // Load cart from SharedPreferences
+//     Load cart from SharedPreferences
     private void loadCartFromLocal() {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String json = prefs.getString(CART_ITEMS_KEY, null);
-        
+
         if (json != null) {
             Gson gson = new Gson();
-            Type type = new TypeToken<ArrayList<FoodItem>>(){}.getType();
-            List<FoodItem> loadedItems = gson.fromJson(json, type);
-            
+            Type type = new TypeToken<ArrayList<OrderItem>>(){}.getType();
+            List<OrderItem> loadedItems = gson.fromJson(json, type);
+
             if (loadedItems != null) {
                 cartItems.clear();
                 cartItems.addAll(loadedItems);
@@ -233,7 +232,8 @@ public class CartManager {
         FirebaseUser currentUser = firebaseAuth.getCurrentUser();
         if (currentUser != null) {
             String userId = currentUser.getUid();
-            databaseReference.child("carts").child(userId).setValue(cartItems)
+            String res = cartItems.get(0).getRestaurantId();
+            databaseReference.child("carts").child(userId).child(res).setValue(cartItems)
                 .addOnSuccessListener(aVoid -> Log.d(TAG, "Cart saved to Firebase"))
                 .addOnFailureListener(e -> Log.e(TAG, "Error saving cart to Firebase", e));
         }
@@ -249,9 +249,9 @@ public class CartManager {
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     // Only load from Firebase if local cart is empty
                     if (cartItems.isEmpty() && dataSnapshot.exists()) {
-                        List<FoodItem> firebaseCartItems = new ArrayList<>();
+                        List<OrderItem> firebaseCartItems = new ArrayList<>();
                         for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                            FoodItem item = snapshot.getValue(FoodItem.class);
+                            OrderItem item = snapshot.getValue(OrderItem.class);
                             if (item != null) {
                                 firebaseCartItems.add(item);
                             }

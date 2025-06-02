@@ -79,7 +79,7 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.OrderViewHol
         }
 
         public void bind(Order order) {
-            textOrderId.setText("Đơn hàng #" + order.getId().substring(0, 8));
+            textOrderId.setText("Đơn hàng #" + order.getId());
             textRestaurantName.setText(order.getRestaurantName());
             textOrderTime.setText(new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
                     .format(order.getOrderTime()));

@@ -17,7 +17,7 @@
             android:id="@+id/collapsingToolbar"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:contentScrim="@color/light_purple"
+            app:contentScrim="@color/white"
             app:layout_scrollFlags="scroll|exitUntilCollapsed">
 
             <ImageView
@@ -68,7 +68,7 @@
 
             <!-- Rating and Category -->
             <TextView
-                android:id="@+id/foodNameTextView"
+                android:id="@+id/foodName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@android:color/black"
@@ -79,30 +79,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 tools:text="Nem Nướng Đặc Biệt" />
-
-            <RatingBar
-                android:id="@+id/foodRatingBar"
-                style="?android:attr/ratingBarStyleSmall"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:isIndicator="true"
-                android:numStars="5"
-                android:rating="4.5"
-                android:stepSize="0.1"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/foodNameTextView" />
-
-            <TextView
-                android:id="@+id/foodRatingText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="4.5"
-                android:textSize="14sp"
-                app:layout_constraintBottom_toBottomOf="@id/foodRatingBar"
-                app:layout_constraintStart_toEndOf="@id/foodRatingBar"
-                app:layout_constraintTop_toTopOf="@id/foodRatingBar" />
 
             <!-- Price -->
 
@@ -118,8 +94,8 @@
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="1.0"
-                app:layout_constraintStart_toEndOf="@id/foodNameTextView"
-                app:layout_constraintTop_toTopOf="@+id/foodNameTextView"
+                app:layout_constraintStart_toEndOf="@id/foodName"
+                app:layout_constraintTop_toTopOf="@+id/foodName"
                 tools:text="85.000đ" />
 
 
@@ -127,34 +103,14 @@
                 android:id="@+id/foodDescriptionTextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
                 android:lineSpacingExtra="4dp"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="14sp"
-                app:layout_constraintTop_toBottomOf="@id/foodRatingBar"
-                />
+                tools:layout_editor_absoluteX="16dp"
+                tools:layout_editor_absoluteY="80dp"
+                app:layout_constraintTop_toBottomOf="@id/foodName"/>
             <!-- Ingredients Section -->
-            <TextView
-                android:id="@+id/ingredientsLabelTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="Thành phần"
-                android:textColor="@android:color/black"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                app:layout_constraintTop_toBottomOf="@id/foodDescriptionTextView" />
 
-            <TextView
-                android:id="@+id/ingredientsTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:lineSpacingExtra="4dp"
-                android:textColor="@android:color/darker_gray"
-                android:textSize="14sp"
-                app:layout_constraintTop_toBottomOf="@id/ingredientsLabelTextView"
-/>
             <!-- Divider -->
             <View
                 android:id="@+id/divider"
@@ -162,7 +118,7 @@
                 android:layout_height="1dp"
                 android:layout_marginVertical="24dp"
                 android:background="@android:color/darker_gray"
-                app:layout_constraintTop_toBottomOf="@id/ingredientsTextView" />
+                app:layout_constraintTop_toBottomOf="@id/foodDescriptionTextView" />
 
             <!-- Toppings Section -->
             <TextView
@@ -174,7 +130,8 @@
                 android:textColor="@android:color/black"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                app:layout_constraintTop_toBottomOf="@id/divider" />
+                app:layout_constraintTop_toBottomOf="@id/divider"
+                android:visibility="gone"/>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/toppingsRecyclerView"
@@ -202,7 +159,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:background="@drawable/quantity_control_background"
                 android:orientation="horizontal"
                 android:padding="4dp"
                 app:layout_constraintStart_toStartOf="parent"

@@ -9,9 +9,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,46 +22,53 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Adapter.CartItemAdapter;
+import com.example.foodorderappcustomer.Adapter.OrderItemAdapter;
 import com.example.foodorderappcustomer.Adapter.ReviewImageAdapter;
-import com.example.foodorderappcustomer.Models.FoodItem;
+import com.example.foodorderappcustomer.Models.CartItem;
+import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.Models.Order;
 import com.example.foodorderappcustomer.Models.Promotion;
-import com.example.foodorderappcustomer.Models.Review;
 import com.example.foodorderappcustomer.util.CartManager;
-import com.example.foodorderappcustomer.util.ImageUploadUtils;
 import com.example.foodorderappcustomer.util.PaymentService;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.ValueEventListener;
 
+import java.text.DateFormat;
 import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.core.content.ContextCompat;
+import androidx.annotation.NonNull;
+import android.content.SharedPreferences;
+import java.util.HashMap;
+import java.util.Map;
 
-public class OrderActivity extends AppCompatActivity implements CartItemAdapter.CartItemListener, CartManager.OnCartUpdateListener {
+public class OrderActivity extends AppCompatActivity implements OrderItemAdapter.OrderItemListener, CartManager.OnCartUpdateListener {
 
     private static final String TAG = "OrderActivity";
     private static final double DEFAULT_DELIVERY_FEE = 15000;
     private static final int MAX_IMAGES = 5;
+    private static final int LOCATION_REQUEST_CODE = 1001;
 
     // UI Components
     private RecyclerView cartItemsRecyclerView;
     private TextView emptyCartText;
     private CardView deliveryCard, paymentCard, orderSummaryCard, promotionCard;
     private TextView subtotalTextView, deliveryFeeTextView, totalTextView, discountTextView;
-    private EditText addressEditText, noteEditText, promotionCodeEditText;
+    private EditText  noteEditText, promotionCodeEditText;
+    private TextView addressEditText;
     private Button applyPromotionButton;
     private RadioGroup paymentMethodRadioGroup;
     private ExtendedFloatingActionButton checkoutButton;
@@ -70,7 +77,7 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
 
     // Data
     private CartManager cartManager;
-    private CartItemAdapter cartItemAdapter;
+    private OrderItemAdapter orderItemAdapter;
     private NumberFormat currencyFormat;
     private double subtotal;
     private double deliveryFee = DEFAULT_DELIVERY_FEE;
@@ -82,9 +89,12 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
     private DatabaseReference databaseReference;
 
     private ReviewImageAdapter reviewImageAdapter;
+    private ActivityResultLauncher<Intent> locationActivityLauncher;
     private ActivityResultLauncher<String> requestPermissionLauncher;
     private ActivityResultLauncher<String> pickImageLauncher;
     private List<Uri> selectedImages = new ArrayList<>();
+    LinearLayout discountLayer;
+    TextView discountText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,10 +119,14 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
             restaurantName = getIntent().getStringExtra("RESTAURANT_NAME");
         }
 
+
         // Initialize UI components
         initViews();
         setupRecyclerView();
         setupClickListeners();
+
+        // Load user's saved address
+        loadUserAddress();
 
         // Update cart items
         updateCartItems();
@@ -140,6 +154,28 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
                     }
                 }
         );
+
+        // Initialize location activity launcher
+        locationActivityLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    String selectedAddress = result.getData().getStringExtra("selected_address");
+                    if (selectedAddress != null && !selectedAddress.isEmpty()) {
+                        // Update the address text
+                        addressEditText.setText(selectedAddress);
+                        
+                        // Update SharedPreferences with the new selected address
+                        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+                        prefs.edit()
+                            .putString("current_address", selectedAddress)
+                            .putBoolean("has_selected_address", true)
+                            .apply();
+                    }
+                }
+            }
+        );
+
     }
 
     private void initViews() {
@@ -166,17 +202,19 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
         discountTextView = findViewById(R.id.discountTextView);
         promotionCodeEditText = findViewById(R.id.promotionCodeEditText);
         applyPromotionButton = findViewById(R.id.applyPromotionButton);
+        discountLayer = findViewById(R.id.discountLayout);
+        discountText = findViewById(R.id.discountTextView);
 
         // Setup promotion button
         applyPromotionButton.setOnClickListener(v -> applyPromotionCode());
     }
 
     private void setupRecyclerView() {
-        List<FoodItem> items = cartManager.getCartItems();
-        cartItemAdapter = new CartItemAdapter(items);
-        cartItemAdapter.setListener(this);
+        List<OrderItem> items = cartManager.getCartItems();
+        orderItemAdapter = new OrderItemAdapter(items);
+        orderItemAdapter.setListener(this);
         cartItemsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        cartItemsRecyclerView.setAdapter(cartItemAdapter);
+        cartItemsRecyclerView.setAdapter(orderItemAdapter);
     }
 
     private void setupClickListeners() {
@@ -188,14 +226,14 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
     }
 
     private void updateCartItems() {
-        List<FoodItem> cartItems = cartManager.getCartItems();
+        List<OrderItem> cartItems = cartManager.getCartItems();
         emptyCartText.setVisibility(View.GONE);
         cartItemsRecyclerView.setVisibility(View.VISIBLE);
         deliveryCard.setVisibility(View.VISIBLE);
         paymentCard.setVisibility(View.VISIBLE);
         orderSummaryCard.setVisibility(View.VISIBLE);
         checkoutButton.setVisibility(View.VISIBLE);
-        cartItemAdapter.setCartItems(cartItems);
+        orderItemAdapter.setOrderItems(cartItems);
 
         // Update totals
         updateTotals();
@@ -239,7 +277,7 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
         // Validate address
         String address = addressEditText.getText().toString().trim();
         if (TextUtils.isEmpty(address)) {
-            addressEditText.setError("Vui lòng nhập địa chỉ giao hàng");
+            Toast.makeText(this, "Vui lòng chọn địa chỉ giao hàng", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -255,7 +293,7 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
         try {
             // If restaurant info is not available, try to get it from the first cart item
             if (TextUtils.isEmpty(restaurantId) && !cartManager.getCartItems().isEmpty()) {
-                FoodItem firstItem = cartManager.getCartItems().get(0);
+                OrderItem firstItem = cartManager.getCartItems().get(0);
                 restaurantId = firstItem.getRestaurantId();
             }
 
@@ -266,6 +304,7 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
 
             // Create order
             Order order = new Order();
+            // Generate a unique ID
             String timestamp = String.valueOf(System.currentTimeMillis());
             String randomNum = String.format("%04d", (int) (Math.random() * 10000));
             order.setId(timestamp.substring(timestamp.length() - 6) + randomNum);
@@ -282,8 +321,8 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
             order.setOrderTime(new Date());
 
             // Add items to order
-            List<FoodItem> cartItems = cartManager.getCartItems();
-            for (FoodItem item : cartItems) {
+            List<OrderItem> cartItems = cartManager.getCartItems();
+            for (OrderItem item : cartItems) {
                 order.addItem(item);
             }
 
@@ -291,6 +330,7 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
             if (appliedPromotion != null) {
                 order.setPromotionId(appliedPromotion.getId());
                 order.setDiscount(discount);
+                order.setTotal(total);
             }
 
             // Show loading dialog
@@ -305,6 +345,8 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
             databaseReference.child("orders").child(order.getId()).setValue(order)
                     .addOnSuccessListener(aVoid -> {
                         loadingDialog.dismiss();
+                        // Save the address as the most recent address
+                        saveRecentAddress(address);
                         // Process payment based on selected method
                         processPayment(order, paymentMethod);
                     })
@@ -314,6 +356,29 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
                     });
         } catch (Exception e) {
             Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void saveRecentAddress(String address) {
+        // Save to SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        prefs.edit()
+            .putString("current_address", address)
+            .putLong("last_order_time", System.currentTimeMillis())
+            .apply();
+
+        // Also save to Firebase for backup
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            Map<String, Object> addressData = new HashMap<>();
+            addressData.put("formattedAddress", address);
+            addressData.put("lastUsed", System.currentTimeMillis());
+
+            databaseReference.child("users")
+                    .child(currentUser.getUid())
+                    .child("recentAddresses")
+                    .push()
+                    .setValue(addressData);
         }
     }
 
@@ -436,7 +501,7 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
         new Thread(() -> {
             try {
                 databaseReference.child("promotions")
-                        .orderByChild("code")
+                        .orderByChild("promoCode")
                         .equalTo(code)
                         .get()
                         .addOnSuccessListener(snapshot -> {
@@ -463,10 +528,10 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
                                 }
 
                                 // Validate promotion
-                                if (!promotion.isValid()) {
-                                    showPromotionError("Mã ưu đãi đã hết hạn hoặc không còn hiệu lực");
-                                    return;
-                                }
+//                                if (!promotion.isValid()) {
+//                                    showPromotionError("Mã ưu đãi đã hết hạn hoặc không còn hiệu lực");
+//                                    return;
+//                                }
 
                                 // Check restaurant restriction
                                 if (promotion.getRestaurantId() != null &&
@@ -476,20 +541,24 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
                                 }
 
                                 // Check minimum order amount
-                                if (subtotal < promotion.getMinOrderAmount()) {
+                                if (subtotal < Double.valueOf(promotion.getMinimumOrder())) {
                                     showPromotionError(String.format(
                                             "Đơn hàng tối thiểu %.0fđ để áp dụng mã này",
-                                            promotion.getMinOrderAmount()));
+                                            promotion.getMinimumOrder()));
                                     return;
                                 }
 
                                 // Apply promotion
                                 appliedPromotion = promotion;
+
                                 calculateDiscount();
+                                discountText.setText(String.format("%.0fđ", discount));
+                                discountLayer.setVisibility(View.VISIBLE);
                                 updateTotals();
                                 Toast.makeText(OrderActivity.this,
                                         "Áp dụng mã ưu đãi thành công!",
                                         Toast.LENGTH_SHORT).show();
+
                             });
                         })
                         .addOnFailureListener(e -> {
@@ -524,52 +593,52 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
 
         try {
             if (appliedPromotion.getDiscountType().equals("percentage")) {
-                discount = subtotal * (appliedPromotion.getDiscountValue() / 100);
+                discount = subtotal * (appliedPromotion.getDiscountAmount() / 100);
                 // Apply max discount if set
-                if (appliedPromotion.getMaxDiscount() > 0) {
-                    discount = Math.min(discount, appliedPromotion.getMaxDiscount());
+                if (appliedPromotion.getMaxDiscountAmount() > 0) {
+                    discount = Math.min(discount, appliedPromotion.getMaxDiscountAmount());
                 }
             } else {
-                discount = appliedPromotion.getDiscountValue();
+                discount = appliedPromotion.getDiscountAmount();
             }
         } catch (Exception e) {
             Log.e(TAG, "Error calculating discount", e);
             discount = 0;
         }
     }
+//
+//    @Override
+//    public void onQuantityChanged(OrderItem cartItem, int newQuantity) {
+//        // Find the corresponding CartItem and update its quantity
+//        List<OrderItem> cartItems = cartManager.getCartItems();
+//        for (int i = 0; i < cartItems.size(); i++) {
+//            OrderItem item = cartItems.get(i);
+//            if (item.getItemId().equals(cartItem.getItemId())) {
+//                item.setQuantity(newQuantity);
+//                cartManager.updateItem(i, item);
+//                break;
+//            }
+//        }
+//    }
+//
+//    @Override
+//    public void onRemoveItem(OrderItem cartItem) {
+//        // Find the corresponding CartItem and remove it
+//        List<OrderItem> cartItems = cartManager.getCartItems();
+//        for (int i = 0; i < cartItems.size(); i++) {
+//            OrderItem item = cartItems.get(i);
+//            if (item.getItemId().equals(cartItem.getItemId())) {
+//                cartManager.removeItem(i);
+//                Toast.makeText(this, "Đã xóa món khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
+//                break;
+//            }
+//        }
+//    }
 
     @Override
-    public void onQuantityChanged(FoodItem cartItem, int newQuantity) {
-        // Find the corresponding CartItem and update its quantity
-        List<FoodItem> cartItems = cartManager.getCartItems();
-        for (int i = 0; i < cartItems.size(); i++) {
-            FoodItem item = cartItems.get(i);
-            if (item.getItemId().equals(cartItem.getItemId())) {
-                item.setQuantity(newQuantity);
-                cartManager.updateItem(i, item);
-                break;
-            }
-        }
-    }
-
-    @Override
-    public void onRemoveItem(FoodItem cartItem) {
-        // Find the corresponding CartItem and remove it
-        List<FoodItem> cartItems = cartManager.getCartItems();
-        for (int i = 0; i < cartItems.size(); i++) {
-            FoodItem item = cartItems.get(i);
-            if (item.getItemId().equals(cartItem.getItemId())) {
-                cartManager.removeItem(i);
-                Toast.makeText(this, "Đã xóa món khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
-                break;
-            }
-        }
-    }
-
-    @Override
-    public void onCartUpdated(List<FoodItem> cartItems, double total) {
+    public void onCartUpdated(List<OrderItem> cartItems, double total) {
         // Update the UI with new cart data
-        cartItemAdapter.setCartItems(cartItems);
+        orderItemAdapter.setOrderItems(cartItems);
         updateTotals();
 
         // Update visibility of UI elements based on whether cart is empty
@@ -601,4 +670,69 @@ public class OrderActivity extends AppCompatActivity implements CartItemAdapter.
 //        }
     }
 
+    private void loadUserAddress() {
+        // Make address text clickable to open location selection
+        addressEditText.setOnClickListener(v -> {
+            Intent intent = new Intent(OrderActivity.this, LocationActivity.class);
+            locationActivityLauncher.launch(intent);
+        });
+
+        // First check if user has manually selected an address
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        boolean hasSelectedAddress = prefs.getBoolean("has_selected_address", false);
+        String currentAddress = prefs.getString("current_address", null);
+
+        if (hasSelectedAddress && currentAddress != null && !currentAddress.isEmpty()) {
+            // Use the manually selected address
+            addressEditText.setText(currentAddress);
+        } else {
+            // If no manually selected address, try to get the most recent address from Firebase
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                databaseReference.child("users")
+                        .child(currentUser.getUid())
+                        .child("recentAddresses")
+                        .orderByChild("lastUsed")
+                        .limitToLast(1)
+                        .addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                if (dataSnapshot.exists()) {
+                                    for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                                        String recentAddress = snapshot.child("formattedAddress").getValue(String.class);
+                                        if (recentAddress != null && !recentAddress.isEmpty()) {
+                                            addressEditText.setText(recentAddress);
+                                            // Update SharedPreferences but don't set has_selected_address flag
+                                            prefs.edit()
+                                                .putString("current_address", recentAddress)
+                                                .putBoolean("has_selected_address", false)
+                                                .apply();
+                                            return;
+                                        }
+                                    }
+                                }
+                                // If no recent address found, show default text
+                                addressEditText.setText("Chọn địa chỉ giao hàng");
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                                Toast.makeText(OrderActivity.this, 
+                                    "Lỗi khi tải địa chỉ: " + databaseError.getMessage(), 
+                                    Toast.LENGTH_SHORT).show();
+                            }
+                        });
+            }
+        }
+    }
+
+    @Override
+    public void onQuantityChanged(CartItem item, int newQuantity) {
+
+    }
+
+    @Override
+    public void onRemoveItem(CartItem item) {
+
+    }
 }

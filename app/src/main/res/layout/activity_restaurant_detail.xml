@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/white"
-    tools:context=".RestaurantDetailActivity">
+    tools:context=".RestaurantMenuActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBar"
@@ -18,7 +18,7 @@
             android:id="@+id/collapsingToolbar"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:contentScrim="?attr/colorPrimary"
+            app:contentScrim="@color/white"
             app:layout_scrollFlags="scroll|exitUntilCollapsed">
 
             <ImageView
@@ -213,15 +213,20 @@
     </androidx.core.widget.NestedScrollView>
 
     <!-- Cart Button -->
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/viewCartButton"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        >
+    <Button
+        android:id="@+id/viewOrderButton"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center"
+        android:layout_gravity="center"
         android:layout_margin="16dp"
-        android:text="Xem đơn hàng "
+        android:text="Giao hàng"
         android:textColor="@android:color/white"
         app:backgroundTint="@color/rebecca_purple"
         />
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -1,6 +1,5 @@
 package com.example.foodorderappcustomer.Models;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -10,7 +9,7 @@ public class Order {
     private String userId;
     private String restaurantId;
     private String restaurantName;
-    private List<FoodItem> items;
+    private List<OrderItem> items;
     private double subtotal;
     private double deliveryFee;
     private double total;
@@ -29,7 +28,7 @@ public class Order {
         this.orderTime = new Date();
     }
 
-    public Order(String userId, String restaurantId, String restaurantName, List<FoodItem> items,
+    public Order(String userId, String restaurantId, String restaurantName, List<OrderItem> items,
                 double subtotal, double deliveryFee, String address, String paymentMethod) {
         this.userId = userId;
         this.restaurantId = restaurantId;
@@ -57,8 +56,8 @@ public class Order {
     public String getRestaurantName() { return restaurantName; }
     public void setRestaurantName(String restaurantName) { this.restaurantName = restaurantName; }
 
-    public List<FoodItem> getItems() { return items; }
-    public void setItems(List<FoodItem> items) { this.items = items; }
+    public List<OrderItem> getItems() { return items; }
+    public void setItems(List<OrderItem> items) { this.items = items; }
 
     public double getSubtotal() { return subtotal; }
     public void setSubtotal(double subtotal) { this.subtotal = subtotal; }
@@ -104,7 +103,7 @@ public class Order {
     }
 
     // Add an item to the order
-    public void addItem(FoodItem item) {
+    public void addItem(OrderItem item) {
         if (items == null) {
             items = new ArrayList<>();
         }
@@ -113,7 +112,7 @@ public class Order {
     }
 
     // Remove an item from the order
-    public void removeItem(FoodItem item) {
+    public void removeItem(OrderItem item) {
         if (items != null) {
             items.remove(item);
             recalculateTotal();
@@ -124,7 +123,7 @@ public class Order {
     private void recalculateTotal() {
         this.subtotal = 0;
         if (items != null) {
-            for (FoodItem item : items) {
+            for (OrderItem item : items) {
                 this.subtotal += item.getTotalPrice();
             }
         }

@@ -20,13 +20,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Adapter.MenuItemAdapter;
-import com.example.foodorderappcustomer.Models.FoodItem;
+import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.Models.MenuItem;
 import com.example.foodorderappcustomer.Models.Option;
 import com.example.foodorderappcustomer.util.CartManager;
 import com.example.foodorderappcustomer.util.ImageUtils;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
-import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -43,7 +42,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class RestaurantDetailActivity extends AppCompatActivity {
+public class RestaurantMenuActivity extends AppCompatActivity {
     private static final String TAG = "RestaurantDetailActivity";
     
     // UI Components
@@ -60,7 +59,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
     private RatingBar restaurantRating;
     private TextView ratingValueText;
     private TabLayout menuTabLayout;
-    private ExtendedFloatingActionButton viewCartButton;
+    private Button viewCartButton;
     
     // Data
     private String restaurantId;
@@ -155,7 +154,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
         restaurantRating = findViewById(R.id.restaurantRating);
         ratingValueText = findViewById(R.id.ratingValueText);
         menuTabLayout = findViewById(R.id.menuTabLayout);
-        viewCartButton = findViewById(R.id.viewCartButton);
+        viewCartButton = findViewById(R.id.viewOrderButton);
     }
     
     private void setupClickListeners() {
@@ -165,7 +164,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
         // View cart button click listener
         viewCartButton.setOnClickListener(v -> {
             // Open OrderActivity with restaurant info
-            Intent intent = new Intent(RestaurantDetailActivity.this,OrderActivity.class);
+            Intent intent = new Intent(RestaurantMenuActivity.this,OrderActivity.class);
             intent.putExtra("RESTAURANT_ID", restaurantId);
             intent.putExtra("RESTAURANT_NAME", restaurantName);
             startActivity(intent);
@@ -201,14 +200,14 @@ public class RestaurantDetailActivity extends AppCompatActivity {
             @Override
             public void onItemClick(MenuItem menuItem) {
                 // Launch FoodDetailActivity when a menu item is clicked
-                Intent intent = new Intent(RestaurantDetailActivity.this, FoodDetailActivity.class);
+                Intent intent = new Intent(RestaurantMenuActivity.this, FoodDetailActivity.class);
                 intent.putExtra("FOOD_ID", menuItem.getId());
                 startActivity(intent);
             }
 //
             @Override
             public void onAddClick(MenuItem menuItem, View view) {
-                Intent intent = new Intent(RestaurantDetailActivity.this, FoodDetailActivity.class);
+                Intent intent = new Intent(RestaurantMenuActivity.this, FoodDetailActivity.class);
                 intent.putExtra("FOOD_ID", menuItem.getId());
                 startActivity(intent);
             }
@@ -277,7 +276,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
                     // Update UI with restaurant details
                     updateRestaurantUI();
                 } else {
-                    Toast.makeText(RestaurantDetailActivity.this, "Restaurant not found", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RestaurantMenuActivity.this, "Restaurant not found", Toast.LENGTH_SHORT).show();
                     finish();
                 }
             }
@@ -285,7 +284,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
                 Log.e(TAG, "Error loading restaurant details: " + databaseError.getMessage());
-                Toast.makeText(RestaurantDetailActivity.this, "Error: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(RestaurantMenuActivity.this, "Error: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
                 finish();
             }
         });
@@ -403,7 +402,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
                 Log.e(TAG, "Failed to load menu items: " + databaseError.getMessage());
-                Toast.makeText(RestaurantDetailActivity.this, "Error loading menu items", Toast.LENGTH_SHORT).show();
+                Toast.makeText(RestaurantMenuActivity.this, "Error loading menu items", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -576,7 +575,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
     // Method to add a menu item to the cart
     private void addToCart(MenuItem menuItem, int quantity) {
         // Create a cart item
-        FoodItem cartItem = new FoodItem(
+        OrderItem cartItem = new OrderItem(
             menuItem.getId(),
             restaurantId,
             menuItem.getName(),

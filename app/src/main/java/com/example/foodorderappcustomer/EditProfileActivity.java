@@ -193,6 +193,7 @@ public class EditProfileActivity extends AppCompatActivity {
         User updatedUser = new User(userId, firstName, lastName, email, phone);
         updatedUser.setProfileImageUrl(imageUrl);
         if (user != null) {
+            // Copy the address map from the existing user
             updatedUser.setAddress(user.getAddress());
             updatedUser.setCreatedAt(user.getCreatedAt());
         }

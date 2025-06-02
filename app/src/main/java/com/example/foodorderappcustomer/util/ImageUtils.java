@@ -36,92 +36,6 @@ public class ImageUtils {
     }
 
     /**
-     * Fetches all images from a specific folder in Firebase Storage
-     *
-     * @param folderName The folder name in Firebase Storage
-     * @param callback   Callback to handle the result
-     */
-    public static void getAllImagesFromFolder(String folderName, ImageListCallback callback) {
-        StorageReference folderRef = FirebaseStorage.getInstance().getReference().child(folderName);
-
-        folderRef.listAll()
-                .addOnSuccessListener(listResult -> {
-                    List<String> imageUrls = new ArrayList<>();
-                    List<CompletableFuture<String>> futures = new ArrayList<>();
-
-                    for (StorageReference item : listResult.getItems()) {
-                        CompletableFuture<String> future = new CompletableFuture<>();
-                        futures.add(future);
-
-                        item.getDownloadUrl()
-                                .addOnSuccessListener(uri -> future.complete(uri.toString()))
-                                .addOnFailureListener(e -> {
-                                    Log.e(TAG, "Error getting download URL for " + item.getName() + ": " + e.getMessage());
-                                    future.complete(null);
-                                });
-                    }
-
-                    // Wait for all futures to complete
-                    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                            .thenRun(() -> {
-                                for (CompletableFuture<String> future : futures) {
-                                    String url = future.join();
-                                    if (url != null) {
-                                        imageUrls.add(url);
-                                    }
-                                }
-                                callback.onSuccess(imageUrls);
-                            })
-                            .exceptionally(e -> {
-                                callback.onFailure(new Exception("Error processing image URLs: " + e.getMessage()));
-                                return null;
-                            });
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error listing files in " + folderName + ": " + e.getMessage());
-                    callback.onFailure(e);
-                });
-    }
-
-    /**
-     * Fetches all images from multiple folders in Firebase Storage
-     *
-     * @param folderNames List of folder names to search in
-     * @param callback    Callback to handle the result
-     */
-    public static void getAllImagesFromFolders(List<String> folderNames, ImageListCallback callback) {
-        List<String> allImageUrls = new ArrayList<>();
-        List<CompletableFuture<Void>> folderFutures = new ArrayList<>();
-
-        for (String folderName : folderNames) {
-            CompletableFuture<Void> folderFuture = new CompletableFuture<>();
-            folderFutures.add(folderFuture);
-
-            getAllImagesFromFolder(folderName, new ImageListCallback() {
-                @Override
-                public void onSuccess(List<String> imageUrls) {
-                    allImageUrls.addAll(imageUrls);
-                    folderFuture.complete(null);
-                }
-
-                @Override
-                public void onFailure(Exception e) {
-                    Log.e(TAG, "Error getting images from " + folderName + ": " + e.getMessage());
-                    folderFuture.complete(null); // Complete even on failure to continue with other folders
-                }
-            });
-        }
-
-        // Wait for all folders to be processed
-        CompletableFuture.allOf(folderFutures.toArray(new CompletableFuture[0]))
-                .thenRun(() -> callback.onSuccess(allImageUrls))
-                .exceptionally(e -> {
-                    callback.onFailure(new Exception("Error processing folders: " + e.getMessage()));
-                    return null;
-                });
-    }
-
-    /**
      * Deletes an image from Firebase Storage
      *
      * @param imageUrl The URL of the image to delete
@@ -172,7 +86,6 @@ public class ImageUtils {
                 // Load image with Picasso
                 Picasso.get()
                         .load(uri.toString())
-                        .placeholder(placeholderResId)
                         .error(errorResId)
                         .into(imageView, new Callback() {
                             @Override
@@ -212,7 +125,7 @@ public class ImageUtils {
         }
     }
 
-    public static void uploadImage(Context context, Uri imageUri, String folder, ImageUploadUtils.ImageUploadCallback callback) {
+    public static void uploadImage(Uri imageUri, String folder, ImageUploadUtils.ImageUploadCallback callback) {
         if (imageUri == null) {
             callback.onFailure(new IllegalArgumentException("Image URI cannot be null"));
             return;

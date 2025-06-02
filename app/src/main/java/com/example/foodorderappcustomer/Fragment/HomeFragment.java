@@ -1,6 +1,8 @@
 package com.example.foodorderappcustomer.Fragment;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -43,15 +45,22 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import android.app.Activity;
+import static android.app.Activity.RESULT_OK;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+
 public class HomeFragment extends Fragment implements PromotionAdapter.OnPromotionClickListener {
 
     private RecyclerView categoryRecyclerView;
     private RecyclerView restaurantRecyclerView;
     private RecyclerView promotionsRecyclerView;
-    private RecyclerView nearbyRestaurantsRecyclerView;
     private CategoryAdapter categoryAdapter;
     private RestaurantAdapter restaurantAdapter;
-    private RestaurantAdapter nearbyRestaurantAdapter;
     private PromotionAdapter promotionAdapter;
     private List<Category> categoryList;
     private List<Restaurant> restaurantList;
@@ -62,12 +71,13 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
     private TextView searchEditText;
     private TextView welcomeTextView;
     private TextView addressTextView;
-    private TextView viewAllCategories;
-    private TextView viewAllRestaurants;
 
     private FirebaseAuth firebaseAuth;
     private DatabaseReference databaseReference;
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+
+    private static final int LOCATION_REQUEST_CODE = 1001;
+    private ActivityResultLauncher<Intent> locationActivityLauncher;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -83,12 +93,10 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         categoryRecyclerView = view.findViewById(R.id.categoryView);
         restaurantRecyclerView = view.findViewById(R.id.restaurantView);
         promotionsRecyclerView = view.findViewById(R.id.promotionsRecyclerView);
-        nearbyRestaurantsRecyclerView = view.findViewById(R.id.nearbyRestaurantsRecyclerView);
+//        nearbyRestaurantsRecyclerView = view.findViewById(R.id.nearbyRestaurantsRecyclerView);
         searchEditText = view.findViewById(R.id.searchEditText);
         welcomeTextView = view.findViewById(R.id.textView);
         addressTextView = view.findViewById(R.id.addressTextView);
-        viewAllCategories = view.findViewById(R.id.viewAllCategories);
-        viewAllRestaurants = view.findViewById(R.id.viewAllRestaurants);
         floatingActionButton = view.findViewById(R.id.floatingActionButton);
 
         // Initialize lists
@@ -102,12 +110,8 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         setupCategoryRecyclerView();
         setupRestaurantRecyclerView();
         setupPromotionsRecyclerView();
-        setupNearbyRestaurantsRecyclerView();
 
         // Set up search functionality
-        setupSearch();
-        setupLocation();
-
         // Set up click listeners
         setupClickListeners();
 
@@ -117,26 +121,42 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         loadRestaurants();
         loadPromotions();
 
+        // Initialize location activity launcher
+        locationActivityLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    String selectedAddress = result.getData().getStringExtra("selected_address");
+                    if (selectedAddress != null && !selectedAddress.isEmpty()) {
+                        // Directly update the UI with selected address
+                        addressTextView.setText(selectedAddress);
+                        
+                        // Store the address in SharedPreferences
+                        SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+                        prefs.edit()
+                            .putString("current_address", selectedAddress)
+                            .putBoolean("has_selected_address", true)
+                            .apply();
+                    }
+                }
+            }
+        );
+
         return view;
     }
 
     private void setupClickListeners() {
-        viewAllCategories.setOnClickListener(v -> {
-            // Handle view all categories click
-            Toast.makeText(getContext(), "View all categories clicked", Toast.LENGTH_SHORT).show();
-            // TODO: Launch categories screen
-        });
-
-        viewAllRestaurants.setOnClickListener(v -> {
-            // Handle view all restaurants click
-            Toast.makeText(getContext(), "View all restaurants clicked", Toast.LENGTH_SHORT).show();
-            // TODO: Launch restaurants screen
-        });
         floatingActionButton.setOnClickListener(v -> {
             // Handle floating action button click
             Toast.makeText(getContext(), "Floating action button clicked", Toast.LENGTH_SHORT).show();
-            // TODO: Launch cart screen
             startActivity(new Intent(getContext(), CartActivity.class));
+        });
+        searchEditText.setOnClickListener(v -> {
+            startActivity(new Intent(getContext(), SearchActivity.class));
+        });
+        addressTextView.setOnClickListener(v -> {
+            Intent intent = new Intent(getContext(), LocationActivity.class);
+            locationActivityLauncher.launch(intent);
         });
     }
 
@@ -161,24 +181,14 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         promotionsRecyclerView.setAdapter(promotionAdapter);
     }
 
-    private void setupNearbyRestaurantsRecyclerView() {
-        nearbyRestaurantAdapter = new RestaurantAdapter(nearbyRestaurantList);
-        LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
-        nearbyRestaurantsRecyclerView.setLayoutManager(layoutManager);
-        nearbyRestaurantsRecyclerView.setAdapter(nearbyRestaurantAdapter);
-    }
-
     private void setupSearch() {
-        searchEditText.setOnClickListener(v -> {
-            startActivity(new Intent(getContext(), SearchActivity.class));
-        });
+
     }
 
     private void setupLocation() {
-        addressTextView.setOnClickListener(v -> {
-            startActivity(new Intent(getContext(), LocationActivity.class));
-        });
+
     }
+
     private void filterRestaurants(String query) {
         filteredRestaurantList.clear();
 
@@ -200,60 +210,67 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
     private void loadUserData() {
         FirebaseUser currentUser = firebaseAuth.getCurrentUser();
         if (currentUser != null) {
-            databaseReference.child("users").child(currentUser.getUid())
+            // First check if user has manually selected an address
+            SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+            boolean hasSelectedAddress = prefs.getBoolean("has_selected_address", false);
+            String currentAddress = prefs.getString("current_address", null);
+
+            if (hasSelectedAddress && currentAddress != null && !currentAddress.isEmpty()) {
+                // Use the manually selected address
+                addressTextView.setText(currentAddress);
+            } else {
+                // If no manually selected address, try to get the most recent address from Firebase
+                databaseReference.child("users")
+                        .child(currentUser.getUid())
+                        .child("recentAddresses")
+                        .orderByChild("lastUsed")
+                        .limitToLast(1)
+                        .addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                if (dataSnapshot.exists()) {
+                                    for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                                        String recentAddress = snapshot.child("formattedAddress").getValue(String.class);
+                                        if (recentAddress != null && !recentAddress.isEmpty()) {
+                                            addressTextView.setText(recentAddress);
+                                            // Update SharedPreferences but don't set has_selected_address flag
+                                            prefs.edit()
+                                                .putString("current_address", recentAddress)
+                                                .putBoolean("has_selected_address", false)
+                                                .apply();
+                                            return;
+                                        }
+                                    }
+                                }
+                                // If no recent address found, show default text
+                                addressTextView.setText("Thêm địa chỉ của bạn");
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                                Toast.makeText(getContext(), "Lỗi khi tải địa chỉ gần đây", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+            }
+
+            // Load user display name
+            databaseReference.child("users")
+                    .child(currentUser.getUid())
+                    .child("firstName")
                     .addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                             if (dataSnapshot.exists()) {
-                                String displayName = dataSnapshot.child("displayName").getValue(String.class);
+                                String displayName = dataSnapshot.getValue(String.class);
                                 if (displayName != null && !displayName.isEmpty()) {
                                     welcomeTextView.setText("Xin chào, " + displayName + "!");
-                                }
-
-                                // Get user address
-                                if (dataSnapshot.child("address").exists()) {
-                                    DataSnapshot addressSnapshot = dataSnapshot.child("address");
-                                    String street = addressSnapshot.child("street").getValue(String.class);
-                                    String city = addressSnapshot.child("city").getValue(String.class);
-                                    String state = addressSnapshot.child("state").getValue(String.class);
-
-                                    StringBuilder fullAddress = new StringBuilder();
-                                    if (street != null && !street.isEmpty()) {
-                                        fullAddress.append(street);
-                                    }
-                                    if (city != null && !city.isEmpty()) {
-                                        if (fullAddress.length() > 0) fullAddress.append(", ");
-                                        fullAddress.append(city);
-                                    }
-                                    if (state != null && !state.isEmpty()) {
-                                        if (fullAddress.length() > 0) fullAddress.append(", ");
-                                        fullAddress.append(state);
-                                    }
-
-                                    if (fullAddress.length() > 0) {
-                                        addressTextView.setText(fullAddress.toString());
-                                        // Make address clickable to update location
-                                        addressTextView.setOnClickListener(v -> {
-                                            startActivity(new Intent(getContext(), LocationActivity.class));
-                                        });
-                                    } else {
-                                        addressTextView.setText("Thêm địa chỉ của bạn");
-                                        addressTextView.setOnClickListener(v -> {
-                                            startActivity(new Intent(getContext(), LocationActivity.class));
-                                        });
-                                    }
-                                } else {
-                                    addressTextView.setText("Thêm địa chỉ của bạn");
-                                    addressTextView.setOnClickListener(v -> {
-                                        startActivity(new Intent(getContext(), LocationActivity.class));
-                                    });
                                 }
                             }
                         }
 
                         @Override
                         public void onCancelled(@NonNull DatabaseError databaseError) {
-                            Toast.makeText(getContext(), "Lỗi khi tải dữ liệu người dùng", Toast.LENGTH_SHORT).show();
+                            // Handle error
                         }
                     });
         }
@@ -352,18 +369,6 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
                     restaurant.setDeliveryFee(deliveryFee);
                     restaurant.setAverageDeliveryTime(deliveryTime);
 
-                    // Set cuisine types if available
-                    if (snapshot.hasChild("cuisine")) {
-                        List<String> cuisineTypes = new ArrayList<>();
-                        for (DataSnapshot cuisineSnapshot : snapshot.child("cuisine").getChildren()) {
-                            String cuisine = cuisineSnapshot.getValue(String.class);
-                            if (cuisine != null) {
-                                cuisineTypes.add(cuisine);
-                            }
-                        }
-                        restaurant.setCuisineTypes(cuisineTypes);
-                    }
-
                     // Set a default image resource
                     // This is a temporary solution until you implement image loading from URLs
                     if (snapshot.hasChild("imageUrl")) {
@@ -385,7 +390,6 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
                 filteredRestaurantList.addAll(restaurantList);
 
                 restaurantAdapter.updateData(filteredRestaurantList);
-                nearbyRestaurantAdapter.updateData(nearbyRestaurantList);
             }
 
             @Override
@@ -400,38 +404,31 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 promotionList.clear();
-
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     String id = snapshot.getKey();
-                    String code = snapshot.child("code").getValue(String.class);
-                    String description = snapshot.child("description").getValue(String.class);
+                    String code = snapshot.child("promoCode").getValue(String.class);
                     String startDateStr = snapshot.child("startDate").getValue(String.class);
                     String endDateStr = snapshot.child("endDate").getValue(String.class);
-                    Double discountValue = snapshot.child("discountValue").getValue(Double.class);
+                    
+                    // Safely get discountAmount with null check
+                    Double discountValue = snapshot.child("discountAmount").getValue(Double.class);
+                    if (discountValue == null) {
+                        discountValue = 0.0;
+                    }
+                    
                     String discountType = snapshot.child("discountType").getValue(String.class);
-                    Boolean isActive = snapshot.child("isActive").getValue(Boolean.class);
-
-                    // Convert date strings to Date objects
-                    Date startDate = null;
-                    Date endDate = null;
-                    try {
-                        if (startDateStr != null) {
-                            startDate = dateFormat.parse(startDateStr);
-                        }
-                        if (endDateStr != null) {
-                            endDate = dateFormat.parse(endDateStr);
-                        }
-                    } catch (ParseException e) {
-                        e.printStackTrace();
+                    
+                    // Safely get maxDiscountAmount with null check
+                    Double maxDiscount = snapshot.child("maxDiscountAmount").getValue(Double.class);
+                    if (maxDiscount == null) {
+                        maxDiscount = 0.0;
                     }
-
-                    // Only add active promotions
-                    if (isActive != null && isActive) {
-                        Promotion promotion = new Promotion(id, code, description, discountType, discountValue);
-                        promotion.setStartDate(startDate);
-                        promotion.setEndDate(endDate);
-                        promotionList.add(promotion);
-                    }
+                    
+                    String minimumOrder = snapshot.child("minimumOrder").getValue(String.class);
+                    
+                    Promotion promotion = new Promotion(code, discountType, discountValue, startDateStr, endDateStr, minimumOrder, maxDiscount);
+                    promotion.setDiscountAmount(discountValue);
+                    promotionList.add(promotion);
                 }
 
                 promotionAdapter.updateData(promotionList);
@@ -444,28 +441,11 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         });
     }
 
-    private int getCategoryImageResource(String categoryName) {
-        // Map category names to drawable resources
-        // You should replace these with your actual drawable resources
-
-        String lowerCaseName = categoryName.toLowerCase();
-
-        if (lowerCaseName.contains("pizza")) {
-            return R.drawable.icons_pizza;
-        } else if (lowerCaseName.contains("pasta")) {
-            return R.drawable.icons_pho;
-        } else if (lowerCaseName.contains("burger") || lowerCaseName.contains("hamburger")) {
-            return R.drawable.icons8_bread;
-        } else {
-            return R.drawable.logo2;
-        }
-    }
-
     @Override
     public void onPromotionClick(Promotion promotion) {
         // Handle promotion click
-        Toast.makeText(getContext(), "Promotion code: " + promotion.getCode(), Toast.LENGTH_SHORT).show();
-        // TODO: Show promotion details or apply to cart
+        Toast.makeText(getContext(), "Promotion code: " + promotion.getPromoCode(), Toast.LENGTH_SHORT).show();
+
     }
 
     @Override

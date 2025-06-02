@@ -4,12 +4,8 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.ImageButton;
-import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -17,13 +13,12 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Adapter.OrderItemAdapter;
 import com.example.foodorderappcustomer.Models.Order;
-import com.example.foodorderappcustomer.Models.FoodItem;
+import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.Models.Review;
 import com.example.foodorderappcustomer.util.ImageUploadUtils;
 import com.google.android.material.button.MaterialButton;
@@ -32,12 +27,13 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class OrderDetailActivity extends AppCompatActivity {
+import androidx.annotation.Nullable;
+
+public class OrderInformationActivity extends AppCompatActivity {
     private TextView textOrderId, textOrderStatus, textOrderTime;
     private TextView textRestaurantName;
     private TextView textDeliveryAddress, textDeliveryNote;
@@ -46,35 +42,31 @@ public class OrderDetailActivity extends AppCompatActivity {
     private RecyclerView orderItemsRecyclerView;
     private View buttonCancelOrder;
     private MaterialButton buttonMarkAsCompleted;
+    private MaterialButton buttonReview;
     private ImageButton backButton;
 
     private Order currentOrder;
     private DatabaseReference databaseReference;
     private SimpleDateFormat dateFormat;
+    private ActivityResultLauncher<Intent> reviewLauncher;
 
-    private CardView reviewCard;
-    private RatingBar ratingBar;
-    private EditText editTextReview;
-    private ImageView imageReview1, imageReview2, imageReview3;
-    private MaterialButton buttonSubmitReview;
-    private List<Uri> selectedImageUris;
-    private int currentImageIndex = -1;
+    private static final int REQUEST_REVIEW = 1;
 
-    private final ActivityResultLauncher<Intent> imagePickerLauncher = registerForActivityResult(
-        new ActivityResultContracts.StartActivityForResult(),
-        result -> {
-            if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                Uri selectedImageUri = result.getData().getData();
-                if (selectedImageUri != null && currentImageIndex >= 0 && currentImageIndex < 3) {
-                    selectedImageUris.set(currentImageIndex, selectedImageUri);
-                    ImageView currentImageView = getCurrentImageView(currentImageIndex);
-                    if (currentImageView != null) {
-                        currentImageView.setImageURI(selectedImageUri);
-                    }
-                }
-            }
-        }
-    );
+//    private final ActivityResultLauncher<Intent> imagePickerLauncher = registerForActivityResult(
+//        new ActivityResultContracts.StartActivityForResult(),
+//        result -> {
+//            if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+//                Uri selectedImageUri = result.getData().getData();
+//                if (selectedImageUri != null && currentImageIndex >= 0 && currentImageIndex < 3) {
+//                    selectedImageUris.set(currentImageIndex, selectedImageUri);
+//                    ImageView currentImageView = getCurrentImageView(currentImageIndex);
+//                    if (currentImageView != null) {
+//                        currentImageView.setImageURI(selectedImageUri);
+//                    }
+//                }
+//            }
+//        }
+//    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +76,18 @@ public class OrderDetailActivity extends AppCompatActivity {
         // Initialize Firebase
         databaseReference = FirebaseDatabase.getInstance().getReference();
         dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+
+        // Initialize ActivityResultLauncher
+        reviewLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK || result.getResultCode() == REQUEST_REVIEW) {
+                    // Review was submitted successfully
+                    buttonReview.setEnabled(false);
+                    buttonReview.setText("Đã đánh giá");
+                }
+            }
+        );
 
         // Initialize views
         initViews();
@@ -96,11 +100,6 @@ public class OrderDetailActivity extends AppCompatActivity {
         } else {
             Toast.makeText(this, "Không tìm thấy thông tin đơn hàng", Toast.LENGTH_SHORT).show();
             finish();
-        }
-
-        selectedImageUris = new ArrayList<>();
-        for (int i = 0; i < 3; i++) {
-            selectedImageUris.add(null);
         }
     }
 
@@ -126,19 +125,12 @@ public class OrderDetailActivity extends AppCompatActivity {
         orderItemsRecyclerView = findViewById(R.id.orderItemsRecyclerView);
         buttonCancelOrder = findViewById(R.id.buttonCancelOrder);
         buttonMarkAsCompleted = findViewById(R.id.buttonMarkAsCompleted);
-
-        reviewCard = findViewById(R.id.reviewCard);
-        ratingBar = findViewById(R.id.ratingBar);
-        editTextReview = findViewById(R.id.editTextReview);
-        imageReview1 = findViewById(R.id.imageReview1);
-        imageReview2 = findViewById(R.id.imageReview2);
-        imageReview3 = findViewById(R.id.imageReview3);
-        buttonSubmitReview = findViewById(R.id.buttonSubmitReview);
+        buttonReview = findViewById(R.id.buttonReview);
 
         // Setup RecyclerView
         orderItemsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        setupReviewImageClickListeners();
+//        setupReviewImageClickListeners();
     }
 
     private void setupClickListeners() {
@@ -147,29 +139,11 @@ public class OrderDetailActivity extends AppCompatActivity {
         buttonCancelOrder.setOnClickListener(v -> showCancelConfirmationDialog());
         
         buttonMarkAsCompleted.setOnClickListener(v -> showMarkAsCompletedConfirmationDialog());
-    }
 
-    private void setupReviewImageClickListeners() {
-        imageReview1.setOnClickListener(v -> openImagePicker(0));
-        imageReview2.setOnClickListener(v -> openImagePicker(1));
-        imageReview3.setOnClickListener(v -> openImagePicker(2));
-
-        buttonSubmitReview.setOnClickListener(v -> submitReview());
-    }
-
-    private void openImagePicker(int imageIndex) {
-        currentImageIndex = imageIndex;
-        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        imagePickerLauncher.launch(intent);
-    }
-
-    private ImageView getCurrentImageView(int index) {
-        switch (index) {
-            case 0: return imageReview1;
-            case 1: return imageReview2;
-            case 2: return imageReview3;
-            default: return null;
-        }
+        buttonReview.setOnClickListener(v -> {
+            Intent intent = ReviewOrderActivity.newIntent(this, currentOrder.getId(), currentOrder.getRestaurantId());
+            reviewLauncher.launch(intent);
+        });
     }
 
     private void loadOrderData(String orderId) {
@@ -215,19 +189,21 @@ public class OrderDetailActivity extends AppCompatActivity {
                 statusColor = getResources().getColor(R.color.status_pending);
                 buttonCancelOrder.setVisibility(View.VISIBLE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
+                buttonReview.setVisibility(View.GONE);
                 break;
             case "contacted":
                 statusText = "Đang giao hàng";
                 statusColor = getResources().getColor(R.color.status_processing);
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.VISIBLE);
+                buttonReview.setVisibility(View.GONE);
                 break;
             case "completed":
                 statusText = "Hoàn thành";
                 statusColor = getResources().getColor(R.color.status_completed);
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
-                reviewCard.setVisibility(View.VISIBLE);
+                buttonReview.setVisibility(View.VISIBLE);
                 checkExistingReview();
                 break;
             case "cancelled":
@@ -235,18 +211,20 @@ public class OrderDetailActivity extends AppCompatActivity {
                 statusColor = getResources().getColor(R.color.status_cancelled);
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
+                buttonReview.setVisibility(View.GONE);
                 break;
             default:
                 statusText = currentOrder.getStatus();
                 statusColor = getResources().getColor(R.color.status_default);
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
+                buttonReview.setVisibility(View.GONE);
         }
         textOrderStatus.setText(statusText);
         textOrderStatus.setTextColor(statusColor);
 
         // Display order items
-        List<FoodItem> orderItems = currentOrder.getItems();
+        List<OrderItem> orderItems = currentOrder.getItems();
         if (orderItems != null && !orderItems.isEmpty()) {
             OrderItemAdapter adapter = new OrderItemAdapter(orderItems);
             orderItemsRecyclerView.setAdapter(adapter);
@@ -261,70 +239,64 @@ public class OrderDetailActivity extends AppCompatActivity {
             .get()
             .addOnSuccessListener(dataSnapshot -> {
                 if (dataSnapshot.exists()) {
-                    // Review exists, disable review submission
-                    Review existingReview = dataSnapshot.getValue(Review.class);
-                    if (existingReview != null) {
-                        ratingBar.setRating(existingReview.getRating());
-                        editTextReview.setText(existingReview.getComment());
-                        ratingBar.setEnabled(false);
-                        editTextReview.setEnabled(false);
-                        buttonSubmitReview.setEnabled(false);
-                        imageReview1.setEnabled(false);
-                        imageReview2.setEnabled(false);
-                        imageReview3.setEnabled(false);
-                    }
+                    // Review exists, disable review button
+                    buttonReview.setEnabled(false);
+                    buttonReview.setText("Đã đánh giá");
+                } else {
+                    buttonReview.setEnabled(true);
+                    buttonReview.setText("Đánh giá đơn hàng");
                 }
             });
     }
 
-    private void submitReview() {
-        float rating = ratingBar.getRating();
-        String comment = editTextReview.getText().toString().trim();
-
-        if (rating == 0) {
-            Toast.makeText(this, "Vui lòng chọn số sao đánh giá", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (comment.isEmpty()) {
-            Toast.makeText(this, "Vui lòng nhập đánh giá của bạn", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Show loading dialog
-        AlertDialog loadingDialog = new AlertDialog.Builder(this)
-            .setTitle("Đang xử lý")
-            .setMessage("Vui lòng đợi...")
-            .setCancelable(false)
-            .create();
-        loadingDialog.show();
-
-        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        Review review = new Review();
-        review.setUserId(userId);
-        review.setOrderId(currentOrder.getId());
-        review.setRestaurantId(currentOrder.getRestaurantId());
-        review.setRating(rating);
-        review.setComment(comment);
-        review.setTimestamp(new Date());
-
-        // Upload images first
-        List<String> imageUrls = new ArrayList<>();
-        List<Uri> validImageUris = new ArrayList<>();
-        for (Uri uri : selectedImageUris) {
-            if (uri != null) {
-                validImageUris.add(uri);
-            }
-        }
-
-        if (validImageUris.isEmpty()) {
-            // No images to upload, save review directly
-            saveReviewToDatabase(review, imageUrls, loadingDialog);
-        } else {
-            // Upload images
-            uploadImages(validImageUris, 0, imageUrls, review, loadingDialog);
-        }
-    }
+//    private void submitReview() {
+//        float rating = ratingBar.getRating();
+//        String comment = editTextReview.getText().toString().trim();
+//
+//        if (rating == 0) {
+//            Toast.makeText(this, "Vui lòng chọn số sao đánh giá", Toast.LENGTH_SHORT).show();
+//            return;
+//        }
+//
+//        if (comment.isEmpty()) {
+//            Toast.makeText(this, "Vui lòng nhập đánh giá của bạn", Toast.LENGTH_SHORT).show();
+//            return;
+//        }
+//
+//        // Show loading dialog
+//        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+//            .setTitle("Đang xử lý")
+//            .setMessage("Vui lòng đợi...")
+//            .setCancelable(false)
+//            .create();
+//        loadingDialog.show();
+//
+//        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+//        Review review = new Review();
+//        review.setUserId(userId);
+//        review.setOrderId(currentOrder.getId());
+//        review.setRestaurantId(currentOrder.getRestaurantId());
+//        review.setRating(rating);
+//        review.setComment(comment);
+//        review.setTimestamp(new Date());
+//
+//        // Upload images first
+//        List<String> imageUrls = new ArrayList<>();
+//        List<Uri> validImageUris = new ArrayList<>();
+//        for (Uri uri : selectedImageUris) {
+//            if (uri != null) {
+//                validImageUris.add(uri);
+//            }
+//        }
+//
+//        if (validImageUris.isEmpty()) {
+//            // No images to upload, save review directly
+//            saveReviewToDatabase(review, imageUrls, loadingDialog);
+//        } else {
+//            // Upload images
+//            uploadImages(validImageUris, 0, imageUrls, review, loadingDialog);
+//        }
+//    }
 
     private void uploadImages(List<Uri> imageUris, int index, List<String> uploadedUrls, 
                             Review review, AlertDialog loadingDialog) {
@@ -347,7 +319,7 @@ public class OrderDetailActivity extends AppCompatActivity {
             @Override
             public void onFailure(Exception e) {
                 loadingDialog.dismiss();
-                Toast.makeText(OrderDetailActivity.this, 
+                Toast.makeText(OrderInformationActivity.this,
                     "Lỗi khi tải ảnh lên: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
 
@@ -428,6 +400,7 @@ public class OrderDetailActivity extends AppCompatActivity {
                 .setCancelable(false)
                 .create();
             loadingDialog.show();
+            Date dateCompleted = new Date();
 
             // Update order status in Firebase
             databaseReference.child("orders").child(currentOrder.getId())
@@ -442,6 +415,16 @@ public class OrderDetailActivity extends AppCompatActivity {
                     loadingDialog.dismiss();
                     Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_REVIEW && resultCode == RESULT_OK) {
+            // Review was submitted successfully
+            buttonReview.setEnabled(false);
+            buttonReview.setText("Đã đánh giá");
         }
     }
 }
