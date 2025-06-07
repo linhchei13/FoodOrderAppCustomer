@@ -1,17 +1,21 @@
 package com.example.foodorderappcustomer.Adapter;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.RatingBar;
 import android.widget.TextView;
+import android.widget.ImageButton;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Models.MenuItem;
+import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.R;
+import com.example.foodorderappcustomer.util.OrderItemManager;
 import com.example.foodorderappcustomer.util.ImageUtils;
 
 import java.text.NumberFormat;
@@ -23,15 +27,24 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
     private List<MenuItem> menuItems;
     private OnItemClickListener listener;
     private NumberFormat currencyFormat;
+    private OrderItemManager orderItemManager;
+    private Context context;
 
     public interface OnItemClickListener {
         void onItemClick(MenuItem menuItem);
         void onAddClick(MenuItem menuItem, View view);
     }
 
-    public MenuItemAdapter(List<MenuItem> menuItems) {
+    public MenuItemAdapter(Context context, List<MenuItem> menuItems) {
+        this.context = context;
         this.menuItems = menuItems;
         this.currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+        this.orderItemManager = OrderItemManager.getInstance(context);
+        
+        // Listen for cart updates
+        orderItemManager.setOnCartUpdateListener((cartItems, total) -> {
+            notifyDataSetChanged(); // Refresh all items when cart changes
+        });
     }
 
     public void setOnItemClickListener(OnItemClickListener listener) {
@@ -41,6 +54,15 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
     public void updateData(List<MenuItem> newMenuItems) {
         this.menuItems = newMenuItems;
         notifyDataSetChanged();
+    }
+
+    private OrderItem findItemInCart(MenuItem menuItem) {
+        for (OrderItem cartItem : orderItemManager.getCartItems()) {
+            if (cartItem.getItemId().equals(menuItem.getId())) {
+                return cartItem;
+            }
+        }
+        return null;
     }
 
     @NonNull
@@ -53,7 +75,7 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
     @Override
     public void onBindViewHolder(@NonNull MenuItemViewHolder holder, int position) {
         MenuItem menuItem = menuItems.get(position);
-        holder.bind(menuItem, listener);
+        holder.bind(menuItem, listener, orderItemManager);
     }
 
     @Override
@@ -66,19 +88,23 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
         private TextView itemName;
         private TextView itemPrice;
         private TextView itemDescription;
-        private RatingBar menuItemRating;
-        private TextView ratingText;
-        private TextView addButton;
+        private View quantityControls;
+        private ImageButton decreaseButton;
+        private TextView quantityTextView;
+        private ImageButton increaseButton;
 
         public MenuItemViewHolder(@NonNull View itemView) {
             super(itemView);
             menuItemImg = itemView.findViewById(R.id.menuItemImg);
             itemName = itemView.findViewById(R.id.itemName);
             itemPrice = itemView.findViewById(R.id.itemPrice);
-            addButton = itemView.findViewById(R.id.add);
+            quantityControls = itemView.findViewById(R.id.quantityControls);
+            decreaseButton = itemView.findViewById(R.id.decreaseButton);
+            quantityTextView = itemView.findViewById(R.id.quantityTextView);
+            increaseButton = itemView.findViewById(R.id.increaseButton);
         }
 
-        public void bind(final MenuItem menuItem, final OnItemClickListener listener) {
+        public void bind(final MenuItem menuItem, final OnItemClickListener listener, OrderItemManager orderItemManager) {
             // Set name
             itemName.setText(menuItem.getName());
 
@@ -106,8 +132,42 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
                     menuItem.getImageUrl(),
                     menuItemImg,
                     R.drawable.bg,
-                    getDefaultImage(menuItem.getCategory())
+                    R.drawable.logo2
                 );
+            }
+
+            // Check if item is in cart
+            OrderItem curentItem = null;
+            for (OrderItem item : orderItemManager.getCartItems()) {
+                if (item.getItemId().equals(menuItem.getId())) {
+                    curentItem = item;
+                    break;
+                }
+            }
+
+            // Show/hide quantity controls based on cart status
+            if (curentItem != null) {
+                final OrderItem cartItem = curentItem;
+                decreaseButton.setVisibility(View.VISIBLE);
+                quantityTextView.setText(String.valueOf(cartItem.getQuantity()));
+                quantityTextView.setVisibility(View.VISIBLE);
+
+                // Set up quantity control listeners
+                decreaseButton.setOnClickListener(v -> {
+                    int newQuantity = cartItem.getQuantity() - 1;
+                    if (newQuantity <= 0) {
+                        orderItemManager.removeItem(cartItem);
+                    } else {
+                        orderItemManager.updateItemQuantity(cartItem, newQuantity);
+                    }
+                });
+
+                increaseButton.setOnClickListener(v -> {
+                    orderItemManager.updateItemQuantity(cartItem, cartItem.getQuantity() + 1);
+                });
+            } else {
+                decreaseButton.setVisibility(View.GONE);
+                quantityTextView.setVisibility(View.GONE);
             }
 
             // Set click listeners
@@ -117,30 +177,12 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
                 }
             });
 
-            addButton.setOnClickListener(v -> {
+            increaseButton.setOnClickListener(v -> {
                 if (listener != null) {
                     listener.onAddClick(menuItem, v);
                 }
             });
         }
-        
-        // Helper method to get default image based on category
-        private int getDefaultImage(String category) {
-            if (category == null) return R.drawable.nemnuong;
 
-            switch (category.toLowerCase()) {
-                case "cơm":
-                    return R.drawable.icons_rice;
-                case "phở, bún":
-                    return R.drawable.icons_pho;
-                case "đồ uống":
-                    return R.drawable.icons_drink;
-                case "bánh mỳ":
-                    return R.drawable.icons8_bread;
-                default:
-                    return R.drawable.nemnuong;
-            }
-
-        }
     }
 }

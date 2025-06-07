@@ -7,6 +7,10 @@ public class Option {
     private double price;
     private boolean selected;
 
+    private Option() {
+
+    }
+
     public Option(String id, String name, double price) {
         this.id = id;
         this.name = name;

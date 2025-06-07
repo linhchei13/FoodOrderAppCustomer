@@ -21,14 +21,13 @@ import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.foodorderappcustomer.Adapter.CartItemAdapter;
 import com.example.foodorderappcustomer.Adapter.OrderItemAdapter;
 import com.example.foodorderappcustomer.Adapter.ReviewImageAdapter;
 import com.example.foodorderappcustomer.Models.CartItem;
 import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.Models.Order;
 import com.example.foodorderappcustomer.Models.Promotion;
-import com.example.foodorderappcustomer.util.CartManager;
+import com.example.foodorderappcustomer.util.OrderItemManager;
 import com.example.foodorderappcustomer.util.PaymentService;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -39,9 +38,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.ValueEventListener;
 
-import java.text.DateFormat;
 import java.text.NumberFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -55,12 +52,14 @@ import android.content.SharedPreferences;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OrderActivity extends AppCompatActivity implements OrderItemAdapter.OrderItemListener, CartManager.OnCartUpdateListener {
+public class OrderActivity extends AppCompatActivity implements OrderItemAdapter.OrderItemListener, OrderItemManager.OnCartUpdateListener {
 
     private static final String TAG = "OrderActivity";
     private static final double DEFAULT_DELIVERY_FEE = 15000;
     private static final int MAX_IMAGES = 5;
     private static final int LOCATION_REQUEST_CODE = 1001;
+
+    private FirebaseAuth firebaseAuth;
 
     // UI Components
     private RecyclerView cartItemsRecyclerView;
@@ -76,7 +75,7 @@ public class OrderActivity extends AppCompatActivity implements OrderItemAdapter
     private ImageButton backButton;
 
     // Data
-    private CartManager cartManager;
+    private OrderItemManager orderItemManager;
     private OrderItemAdapter orderItemAdapter;
     private NumberFormat currencyFormat;
     private double subtotal;
@@ -100,13 +99,14 @@ public class OrderActivity extends AppCompatActivity implements OrderItemAdapter
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_order);
+        firebaseAuth = FirebaseAuth.getInstance();
 
         // Initialize currency format
         currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
         // Initialize Cart
-        cartManager = CartManager.getInstance(this);
-        cartManager.setOnCartUpdateListener(this);
+        orderItemManager = OrderItemManager.getInstance(this);
+        orderItemManager.setOnCartUpdateListener(this);
 
         // Initialize Firebase
         databaseReference = FirebaseDatabase.getInstance().getReference();
@@ -166,7 +166,7 @@ public class OrderActivity extends AppCompatActivity implements OrderItemAdapter
                         addressEditText.setText(selectedAddress);
                         
                         // Update SharedPreferences with the new selected address
-                        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+                        SharedPreferences prefs = getSharedPreferences(firebaseAuth.getCurrentUser().getUid(), MODE_PRIVATE);
                         prefs.edit()
                             .putString("current_address", selectedAddress)
                             .putBoolean("has_selected_address", true)
@@ -210,11 +210,15 @@ public class OrderActivity extends AppCompatActivity implements OrderItemAdapter
     }
 
     private void setupRecyclerView() {
-        List<OrderItem> items = cartManager.getCartItems();
-        orderItemAdapter = new OrderItemAdapter(items);
+        // Get only items for this restaurant
+        List<OrderItem> restaurantItems = orderItemManager.getRestaurantItems(restaurantId);
+        orderItemAdapter = new OrderItemAdapter(restaurantItems);
         orderItemAdapter.setListener(this);
         cartItemsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         cartItemsRecyclerView.setAdapter(orderItemAdapter);
+        
+        // Update totals
+        updateTotals();
     }
 
     private void setupClickListeners() {
@@ -222,11 +226,11 @@ public class OrderActivity extends AppCompatActivity implements OrderItemAdapter
         backButton.setOnClickListener(v -> finish());
 
         // Checkout button
-        checkoutButton.setOnClickListener(v -> placeOrder());
+        checkoutButton.setOnClickListener(v -> checkout());
     }
 
     private void updateCartItems() {
-        List<OrderItem> cartItems = cartManager.getCartItems();
+        List<OrderItem> cartItems = orderItemManager.getCartItems();
         emptyCartText.setVisibility(View.GONE);
         cartItemsRecyclerView.setVisibility(View.VISIBLE);
         deliveryCard.setVisibility(View.VISIBLE);
@@ -240,231 +244,94 @@ public class OrderActivity extends AppCompatActivity implements OrderItemAdapter
     }
 
     private void updateTotals() {
-        try {
-            subtotal = cartManager.getCartTotal();
-            calculateDiscount();
-            total = subtotal + deliveryFee - discount;
+        // Calculate totals for this restaurant only
+        subtotal = orderItemManager.getRestaurantTotal(restaurantId);
+        total = subtotal + deliveryFee - discount;
 
-            // Format and display amounts
-            String formattedSubtotal = currencyFormat.format(subtotal).replace("₫", "đ");
-            String formattedDeliveryFee = currencyFormat.format(deliveryFee).replace("₫", "đ");
-            String formattedDiscount = currencyFormat.format(discount).replace("₫", "đ");
-            String formattedTotal = currencyFormat.format(total).replace("₫", "đ");
+        // Update UI
+        String formattedSubtotal = currencyFormat.format(subtotal).replace("₫", "đ");
+        String formattedDeliveryFee = currencyFormat.format(deliveryFee).replace("₫", "đ");
+        String formattedTotal = currencyFormat.format(total).replace("₫", "đ");
+        String formattedDiscount = currencyFormat.format(discount).replace("₫", "đ");
 
-            // Update UI on main thread
-            runOnUiThread(() -> {
-                subtotalTextView.setText(formattedSubtotal);
-                deliveryFeeTextView.setText(formattedDeliveryFee);
-                discountTextView.setText("-" + formattedDiscount);
-                totalTextView.setText(formattedTotal);
-
-                // Show/hide discount text based on whether there's a discount
-                discountTextView.setVisibility(discount > 0 ? View.VISIBLE : View.GONE);
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Error updating totals", e);
+        subtotalTextView.setText(formattedSubtotal);
+        deliveryFeeTextView.setText(formattedDeliveryFee);
+        totalTextView.setText(formattedTotal);
+        
+        if (discount > 0) {
+            discountLayer.setVisibility(View.VISIBLE);
+            discountText.setText("-" + formattedDiscount);
+        } else {
+            discountLayer.setVisibility(View.GONE);
         }
+
+        // Update checkout button state
+        boolean hasItems = !orderItemManager.getRestaurantItems(restaurantId).isEmpty();
+        checkoutButton.setEnabled(hasItems);
+        emptyCartText.setVisibility(hasItems ? View.GONE : View.VISIBLE);
+        cartItemsRecyclerView.setVisibility(hasItems ? View.VISIBLE : View.GONE);
     }
 
-    private void placeOrder() {
-        // Check if user is logged in
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null) {
-            showLoginPrompt();
+    private void checkout() {
+        if (orderItemManager.getRestaurantItems(restaurantId).isEmpty()) {
+            Toast.makeText(this, "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
             return;
         }
 
         // Validate address
         String address = addressEditText.getText().toString().trim();
-        if (TextUtils.isEmpty(address)) {
-            Toast.makeText(this, "Vui lòng chọn địa chỉ giao hàng", Toast.LENGTH_SHORT).show();
+        if (address.isEmpty()) {
+            Toast.makeText(this, "Vui lòng nhập địa chỉ giao hàng", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Get selected payment method
-        int selectedId = paymentMethodRadioGroup.getCheckedRadioButtonId();
-        RadioButton radioButton = findViewById(selectedId);
-        String paymentMethod = radioButton.getText().toString();
+        // Get payment method
+        int selectedPaymentId = paymentMethodRadioGroup.getCheckedRadioButtonId();
+        if (selectedPaymentId == -1) {
+            Toast.makeText(this, "Vui lòng chọn phương thức thanh toán", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String paymentMethod = ((RadioButton) findViewById(selectedPaymentId)).getText().toString();
 
         // Get note
         String note = noteEditText.getText().toString().trim();
 
-        // Create order
         try {
-            // If restaurant info is not available, try to get it from the first cart item
-            if (TextUtils.isEmpty(restaurantId) && !cartManager.getCartItems().isEmpty()) {
-                OrderItem firstItem = cartManager.getCartItems().get(0);
-                restaurantId = firstItem.getRestaurantId();
-            }
-
-            // Default restaurant name if not available
-            if (TextUtils.isEmpty(restaurantName)) {
-                restaurantName = "Nhà hàng";
-            }
-
-            // Create order
-            Order order = new Order();
-            // Generate a unique ID
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            String randomNum = String.format("%04d", (int) (Math.random() * 10000));
-            order.setId(timestamp.substring(timestamp.length() - 6) + randomNum);
-            order.setUserId(currentUser.getUid());
-            order.setRestaurantId(restaurantId);
-            order.setRestaurantName(restaurantName);
-            order.setAddress(address);
+            // Create order for this restaurant only
+            Order order = orderItemManager.createRestaurantOrder(
+                restaurantId,
+                restaurantName,
+                deliveryFee,
+                address,
+                paymentMethod
+            );
             order.setNote(note);
-            order.setPaymentMethod(paymentMethod);
-            order.setSubtotal(subtotal);
-            order.setDeliveryFee(deliveryFee);
-            order.setTotal(total);
-            order.setStatus("pending");
-            order.setOrderTime(new Date());
-
-            // Add items to order
-            List<OrderItem> cartItems = cartManager.getCartItems();
-            for (OrderItem item : cartItems) {
-                order.addItem(item);
-            }
-
-            // Add promotion info if applied
             if (appliedPromotion != null) {
                 order.setPromotionId(appliedPromotion.getId());
                 order.setDiscount(discount);
-                order.setTotal(total);
             }
 
-            // Show loading dialog
-            AlertDialog loadingDialog = new AlertDialog.Builder(this)
-                    .setTitle("Đang xử lý đơn hàng")
-                    .setMessage("Vui lòng đợi...")
-                    .setCancelable(false)
-                    .create();
-            loadingDialog.show();
+            // Submit order
+            orderItemManager.submitOrder(order, new OrderItemManager.OnOrderSubmitListener() {
+                @Override
+                public void onSuccess(Order order) {
+                    Toast.makeText(OrderActivity.this, "Đặt hàng thành công", Toast.LENGTH_SHORT).show();
+                    // Navigate to order information
+                    Intent intent = new Intent(OrderActivity.this, OrderInformationActivity.class);
+                    intent.putExtra("ORDER_ID", order.getId());
+                    startActivity(intent);
+                    finish();
+                }
 
-            // Save order to Firebase
-            databaseReference.child("orders").child(order.getId()).setValue(order)
-                    .addOnSuccessListener(aVoid -> {
-                        loadingDialog.dismiss();
-                        // Save the address as the most recent address
-                        saveRecentAddress(address);
-                        // Process payment based on selected method
-                        processPayment(order, paymentMethod);
-                    })
-                    .addOnFailureListener(e -> {
-                        loadingDialog.dismiss();
-                        Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
+                @Override
+                public void onFailure(String errorMessage) {
+                    Toast.makeText(OrderActivity.this, "Lỗi: " + errorMessage, Toast.LENGTH_SHORT).show();
+                }
+            });
         } catch (Exception e) {
             Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
-
-    private void saveRecentAddress(String address) {
-        // Save to SharedPreferences
-        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-        prefs.edit()
-            .putString("current_address", address)
-            .putLong("last_order_time", System.currentTimeMillis())
-            .apply();
-
-        // Also save to Firebase for backup
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser != null) {
-            Map<String, Object> addressData = new HashMap<>();
-            addressData.put("formattedAddress", address);
-            addressData.put("lastUsed", System.currentTimeMillis());
-
-            databaseReference.child("users")
-                    .child(currentUser.getUid())
-                    .child("recentAddresses")
-                    .push()
-                    .setValue(addressData);
-        }
-    }
-
-    private void processPayment(Order order, String paymentMethod) {
-        switch (paymentMethod) {
-            case "Ví điện tử":
-                processVNPayPayment(order);
-                break;
-            case "Thẻ quốc tế":
-                showCardPaymentDialog(order);
-                break;
-            case "Thanh toán khi nhận hàng":
-                // For cash payment, just show success dialog
-                cartManager.clearCart();
-                break;
-            default:
-                Toast.makeText(this, "Phương thức thanh toán không hợp lệ", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void processVNPayPayment(Order order) {
-        PaymentService.processVNPayPayment(this, order, new PaymentService.PaymentCallback() {
-            @Override
-            public void onPaymentSuccess(String transactionId) {
-                // Clear cart and show success dialog
-                cartManager.clearCart();
-
-            }
-
-            @Override
-            public void onPaymentFailure(String errorMessage) {
-                Toast.makeText(OrderActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void showCardPaymentDialog(Order order) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_card_payment, null);
-        builder.setView(dialogView);
-
-        AlertDialog dialog = builder.create();
-
-        // Get references to dialog views
-        EditText cardNumberInput = dialogView.findViewById(R.id.cardNumberInput);
-        EditText expiryDateInput = dialogView.findViewById(R.id.expiryDateInput);
-        EditText cvvInput = dialogView.findViewById(R.id.cvvInput);
-        EditText cardholderNameInput = dialogView.findViewById(R.id.cardholderNameInput);
-        Button cancelButton = dialogView.findViewById(R.id.cancelButton);
-        Button confirmButton = dialogView.findViewById(R.id.confirmButton);
-
-        // Set up click listeners
-        cancelButton.setOnClickListener(v -> dialog.dismiss());
-
-        confirmButton.setOnClickListener(v -> {
-            String cardNumber = cardNumberInput.getText().toString().trim();
-            String expiryDate = expiryDateInput.getText().toString().trim();
-            String cvv = cvvInput.getText().toString().trim();
-            String cardholderName = cardholderNameInput.getText().toString().trim();
-
-            // Validate inputs
-            if (cardNumber.isEmpty() || expiryDate.isEmpty() || cvv.isEmpty() || cardholderName.isEmpty()) {
-                Toast.makeText(this, "Vui lòng điền đầy đủ thông tin", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // Process card payment
-            PaymentService.processCardPayment(this, order, cardNumber, expiryDate, cvv,
-                    new PaymentService.PaymentCallback() {
-                        @Override
-                        public void onPaymentSuccess(String transactionId) {
-                            dialog.dismiss();
-                            cartManager.clearCart();
-
-                        }
-
-                        @Override
-                        public void onPaymentFailure(String errorMessage) {
-                            Toast.makeText(OrderActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
-                        }
-                    });
-        });
-
-        dialog.show();
-    }
-
 
     private void showLoginPrompt() {
         new AlertDialog.Builder(this)
@@ -606,59 +473,13 @@ public class OrderActivity extends AppCompatActivity implements OrderItemAdapter
             discount = 0;
         }
     }
-//
-//    @Override
-//    public void onQuantityChanged(OrderItem cartItem, int newQuantity) {
-//        // Find the corresponding CartItem and update its quantity
-//        List<OrderItem> cartItems = cartManager.getCartItems();
-//        for (int i = 0; i < cartItems.size(); i++) {
-//            OrderItem item = cartItems.get(i);
-//            if (item.getItemId().equals(cartItem.getItemId())) {
-//                item.setQuantity(newQuantity);
-//                cartManager.updateItem(i, item);
-//                break;
-//            }
-//        }
-//    }
-//
-//    @Override
-//    public void onRemoveItem(OrderItem cartItem) {
-//        // Find the corresponding CartItem and remove it
-//        List<OrderItem> cartItems = cartManager.getCartItems();
-//        for (int i = 0; i < cartItems.size(); i++) {
-//            OrderItem item = cartItems.get(i);
-//            if (item.getItemId().equals(cartItem.getItemId())) {
-//                cartManager.removeItem(i);
-//                Toast.makeText(this, "Đã xóa món khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
-//                break;
-//            }
-//        }
-//    }
 
     @Override
     public void onCartUpdated(List<OrderItem> cartItems, double total) {
-        // Update the UI with new cart data
-        orderItemAdapter.setOrderItems(cartItems);
+        // Filter items for this restaurant only
+        List<OrderItem> restaurantItems = orderItemManager.getRestaurantItems(restaurantId);
+        orderItemAdapter.setOrderItems(restaurantItems);
         updateTotals();
-
-        // Update visibility of UI elements based on whether cart is empty
-        if (cartItems.isEmpty()) {
-            emptyCartText.setVisibility(View.VISIBLE);
-            cartItemsRecyclerView.setVisibility(View.GONE);
-            deliveryCard.setVisibility(View.GONE);
-            paymentCard.setVisibility(View.GONE);
-            orderSummaryCard.setVisibility(View.GONE);
-            checkoutButton.setVisibility(View.GONE);
-            appliedPromotion = null;
-            promotionCodeEditText.setText("");
-        } else {
-            emptyCartText.setVisibility(View.GONE);
-            cartItemsRecyclerView.setVisibility(View.VISIBLE);
-            deliveryCard.setVisibility(View.VISIBLE);
-            paymentCard.setVisibility(View.VISIBLE);
-            orderSummaryCard.setVisibility(View.VISIBLE);
-            checkoutButton.setVisibility(View.VISIBLE);
-        }
     }
 
     @Override
@@ -678,9 +499,9 @@ public class OrderActivity extends AppCompatActivity implements OrderItemAdapter
         });
 
         // First check if user has manually selected an address
-        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        SharedPreferences prefs = getSharedPreferences(firebaseAuth.getUid(), MODE_PRIVATE);
         boolean hasSelectedAddress = prefs.getBoolean("has_selected_address", false);
-        String currentAddress = prefs.getString("current_address", null);
+        String currentAddress = prefs.getString("selected_address", null);
 
         if (hasSelectedAddress && currentAddress != null && !currentAddress.isEmpty()) {
             // Use the manually selected address

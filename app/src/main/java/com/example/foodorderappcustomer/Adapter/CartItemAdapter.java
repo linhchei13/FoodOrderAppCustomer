@@ -1,5 +1,7 @@
 package com.example.foodorderappcustomer.Adapter;
 
+import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.foodorderappcustomer.Models.CartItem;
+import com.example.foodorderappcustomer.OrderActivity;
 import com.example.foodorderappcustomer.R;
 import com.example.foodorderappcustomer.util.ImageUtils;
 
@@ -18,10 +21,14 @@ import java.util.List;
 import java.util.Locale;
 
 public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartItemViewHolder> {
-
     private List<CartItem> cartItems;
+    private Context context;
     private final NumberFormat currencyFormat;
+    private OnCartItemClickListener listener;
 
+    public interface OnCartItemClickListener {
+        void onCartItemClick(CartItem cartItem);
+    }
 
     public CartItemAdapter(List<CartItem> cartItems) {
         this.cartItems = cartItems;
@@ -33,11 +40,16 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartIt
         notifyDataSetChanged();
     }
 
+    public void setOnCartItemClickListener(OnCartItemClickListener listener) {
+        this.listener = listener;
+    }
 
     @NonNull
     @Override
     public CartItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_cart, parent, false);
+        context = parent.getContext();
+        View view = LayoutInflater.from(parent.getContext())
+            .inflate(R.layout.item_cart, parent, false);
         return new CartItemViewHolder(view);
     }
 
@@ -45,6 +57,13 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartIt
     public void onBindViewHolder(@NonNull CartItemViewHolder holder, int position) {
         CartItem cartItem = cartItems.get(position);
         holder.bind(cartItem);
+        holder.itemView.setOnClickListener(v -> {
+            listener.onCartItemClick(cartItems.get(position));
+            Intent intent = new Intent(context, OrderActivity.class);
+            intent.putExtra("RESTAURANT_ID", cartItems.get(position).getRestaurantId());
+            intent.putExtra("RESTAURANT_NAME", cartItems.get(position).getRestaurantName());
+            context.startActivity(intent);
+        });
     }
 
     @Override
@@ -53,44 +72,51 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartIt
     }
 
     class CartItemViewHolder extends RecyclerView.ViewHolder {
-        private final ImageView foodImageView;
-        private final TextView foodNameTextView;
-        private final TextView deliveryTime;
-//        private final TextView distance;
-        private final TextView quantityTextView;
+        private final ImageView restaurantImageView;
+        private final TextView restaurantNameTextView;
+        private final TextView totalPriceTextView;
+        private final TextView itemCountTextView;
 
         public CartItemViewHolder(@NonNull View itemView) {
             super(itemView);
-            foodImageView = itemView.findViewById(R.id.foodImageView);
-            foodNameTextView = itemView.findViewById(R.id.foodName);
-            deliveryTime = itemView.findViewById(R.id.deliveryTime);
-//            distance = itemView.findViewById(R.id.distance);
-            quantityTextView = itemView.findViewById(R.id.quantity);
+            restaurantImageView = itemView.findViewById(R.id.foodImageView);
+            restaurantNameTextView = itemView.findViewById(R.id.foodName);
+            totalPriceTextView = itemView.findViewById(R.id.deliveryTime);
+            itemCountTextView = itemView.findViewById(R.id.quantity);
 
+//            itemView.setOnClickListener(v -> {
+//                int position = getAdapterPosition();
+//                if (position != RecyclerView.NO_POSITION && listener != null) {
+//                    listener.onCartItemClick(cartItems.get(position));
+//                    Intent intent = new Intent(itemView.getContext(), OrderActivity.class);
+//                    intent.putExtra("RESTAURANT_ID", cartItems.get(position).getRestaurantId());
+//                    intent.putExtra("RESTAURANT_NAME", cartItems.get(position).getRestaurantName());
+//                    itemView.getContext().startActivity(intent);
+//                }
+//            });
         }
 
         public void bind(CartItem cartItem) {
-            // Set food name
-            foodNameTextView.setText(cartItem.getRestaurantName());
+            // Set restaurant name
+            restaurantNameTextView.setText(cartItem.getRestaurantName());
 
-            // Set food price
+            // Set total price
             String formattedPrice = currencyFormat.format(cartItem.getTotalPrice()).replace("₫", "đ");
-            deliveryTime.setText(formattedPrice);
+            totalPriceTextView.setText(formattedPrice);
 
-            // Set quantity
-            quantityTextView.setText(String.valueOf(cartItem.getQuantity()));
+            // Set item count
+            itemCountTextView.setText(String.valueOf(cartItem.getTotalQuantity()));
 
-
-            // Load food image
+            // Load restaurant image
             if (cartItem.getRestaurantImage() != null && !cartItem.getRestaurantImage().isEmpty()) {
                 ImageUtils.loadImage(
-                        cartItem.getRestaurantImage(),
-                        foodImageView,
-                        R.drawable.ic_restaurant,
-                        R.drawable.ic_restaurant
+                    cartItem.getRestaurantImage(),
+                    restaurantImageView,
+                    R.drawable.ic_restaurant,
+                    R.drawable.ic_restaurant
                 );
             } else {
-                foodImageView.setImageResource(R.drawable.ic_restaurant);
+                restaurantImageView.setImageResource(R.drawable.ic_restaurant);
             }
         }
     }

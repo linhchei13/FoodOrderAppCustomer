@@ -16,9 +16,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorderappcustomer.Adapter.CartItemAdapter;
 import com.example.foodorderappcustomer.Models.CartItem;
 import com.example.foodorderappcustomer.Models.OrderItem;
-import com.example.foodorderappcustomer.util.CartManager;
+import com.example.foodorderappcustomer.util.OrderItemManager;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.storage.StorageReference;
 
@@ -29,7 +28,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class CartActivity extends AppCompatActivity implements CartManager.OnCartUpdateListener {
+public class ShowCartActivity extends AppCompatActivity implements OrderItemManager.OnCartUpdateListener {
 
     // UI Components
     private RecyclerView cartItemsRecyclerView;
@@ -41,7 +40,7 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
     private ImageButton backButton;
 
     // Data
-    private CartManager cartManager;
+    private OrderItemManager orderItemManager;
     private CartItemAdapter restaurantCartAdapter;
     private NumberFormat currencyFormat;
     DatabaseReference reference;
@@ -58,8 +57,8 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
         currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
         // Initialize CartManager
-        cartManager = CartManager.getInstance(this);
-        cartManager.setOnCartUpdateListener(this);
+        orderItemManager = OrderItemManager.getInstance(this);
+        orderItemManager.setOnCartUpdateListener(this);
 
         // Initialize UI components
         initViews();
@@ -87,7 +86,7 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
     }
 
     private void setupRecyclerView() {
-        List<CartItem> restaurantCarts = groupItemsByRestaurant(cartManager.getCartItems());
+        List<CartItem> restaurantCarts = groupItemsByRestaurant(orderItemManager.getCartItems());
         restaurantCartAdapter = new CartItemAdapter( restaurantCarts);
         cartItemsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         cartItemsRecyclerView.setAdapter(restaurantCartAdapter);
@@ -129,8 +128,8 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
 
         // Checkout button
         checkoutButton.setOnClickListener(v -> {
-            if (!cartManager.isEmpty()) {
-                Intent intent = new Intent(CartActivity.this, OrderActivity.class);
+            if (!orderItemManager.isEmpty()) {
+                Intent intent = new Intent(ShowCartActivity.this, OrderActivity.class);
                 startActivity(intent);
             } else {
                 Toast.makeText(this, "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
@@ -139,8 +138,8 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
 
         // Clear cart button
         clearCartButton.setOnClickListener(v -> {
-            if (!cartManager.isEmpty()) {
-                cartManager.clearCart();
+            if (!orderItemManager.isEmpty()) {
+                orderItemManager.clearCart();
                 Toast.makeText(this, "Đã xóa giỏ hàng", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "Giỏ hàng đã trống", Toast.LENGTH_SHORT).show();
@@ -154,7 +153,7 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
 //
 //    }
     private void updateCartItems() {
-        List<OrderItem> cartItems = cartManager.getCartItems();
+        List<OrderItem> cartItems = orderItemManager.getCartItems();
         if (cartItems.isEmpty()) {
             emptyCartText.setVisibility(View.VISIBLE);
             cartItemsRecyclerView.setVisibility(View.GONE);
@@ -170,7 +169,7 @@ public class CartActivity extends AppCompatActivity implements CartManager.OnCar
         }
 
         // Update subtotal
-        double subtotal = cartManager.getCartTotal();
+        double subtotal = orderItemManager.getCartTotal();
         String formattedSubtotal = currencyFormat.format(subtotal).replace("₫", "đ");
         subtotalTextView.setText("Tổng tiền: " + formattedSubtotal);
     }

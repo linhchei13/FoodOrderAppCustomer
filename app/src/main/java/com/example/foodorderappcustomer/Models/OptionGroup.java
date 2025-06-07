@@ -10,6 +10,10 @@ public class OptionGroup {
     private boolean required;
     private List<Option> options;
 
+    private OptionGroup() {
+
+    }
+
     public OptionGroup(String id, String name, int maxSelections, boolean required) {
         this.id = id;
         this.name = name;

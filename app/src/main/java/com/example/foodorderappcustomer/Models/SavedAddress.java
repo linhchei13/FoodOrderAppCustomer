@@ -5,7 +5,6 @@ public class SavedAddress {
     private String label;
     private String address;
     private String placeId;
-    private long lastUsed;
 
     public SavedAddress() {
         // Required empty constructor for Firebase
@@ -16,7 +15,6 @@ public class SavedAddress {
         this.label = label;
         this.address = address;
         this.placeId = placeId;
-        this.lastUsed = System.currentTimeMillis();
     }
 
     public String getId() {
@@ -51,11 +49,5 @@ public class SavedAddress {
         this.placeId = placeId;
     }
 
-    public long getLastUsed() {
-        return lastUsed;
-    }
-
-    public void setLastUsed(long lastUsed) {
-        this.lastUsed = lastUsed;
-    }
 }
+

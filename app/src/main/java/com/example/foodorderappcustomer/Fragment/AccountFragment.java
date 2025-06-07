@@ -43,6 +43,8 @@ public class AccountFragment extends Fragment {
     private StorageReference storageReference;
     private ImageView profileImageView;
 
+    private TextView addressesOption, paymentMethodsOption, notificationsOption, helpOption;
+
     public AccountFragment() {
         // Required empty public constructor
     }
@@ -72,6 +74,7 @@ public class AccountFragment extends Fragment {
         swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
         editProfileButton = view.findViewById(R.id.editProfileButton);
         profileImageView = view.findViewById(R.id.profileImageView);
+        addressesOption = view.findViewById(R.id.addressesOption);
         // Set up refresh listener
         swipeRefreshLayout.setOnRefreshListener(this::loadUserData);
 
@@ -83,6 +86,10 @@ public class AccountFragment extends Fragment {
         });
         // Load user data
         loadUserData();
+        addressesOption.setOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), LoginActivity.class);
+            startActivity(intent);
+        });
 
     }
 

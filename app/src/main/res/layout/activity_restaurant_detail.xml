@@ -19,6 +19,11 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             app:contentScrim="@color/white"
+            app:statusBarScrim="@android:color/transparent"
+            app:expandedTitleMarginStart="72dp"
+            app:expandedTitleMarginBottom="28dp"
+            app:collapsedTitleTextColor="@android:color/black"
+            app:expandedTitleTextColor="@android:color/transparent"
             app:layout_scrollFlags="scroll|exitUntilCollapsed">
 
             <ImageView
@@ -40,6 +45,7 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
+                android:background="@android:color/transparent"
                 app:layout_collapseMode="pin"
                 app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
 
@@ -54,6 +60,7 @@
             </androidx.appcompat.widget.Toolbar>
         </com.google.android.material.appbar.CollapsingToolbarLayout>
     </com.google.android.material.appbar.AppBarLayout>
+
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
@@ -78,7 +85,8 @@
                     android:layout_height="wrap_content"
                     android:textSize="24sp"
                     android:textStyle="bold"
-                    tools:text="Tasty Bites Restaurant" />
+                    android:text="Tasty Bites"
+                    android:textColor="@android:color/black" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -95,7 +103,8 @@
                         android:isIndicator="true"
                         android:numStars="5"
                         android:rating="4.5"
-                        android:stepSize="0.1" />
+                        android:stepSize="0.1"
+                        android:theme="@style/CustomRatingBar"/>
 
                     <TextView
                         android:id="@+id/ratingValueText"
@@ -106,6 +115,15 @@
                         android:textSize="14sp" />
 
                     <TextView
+                        android:id="@+id/reviewCountText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:text="(0 đánh giá)"
+                        android:textSize="14sp"
+                        android:textColor="#666666" />
+
+                    <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
@@ -113,12 +131,12 @@
                         android:text="•"
                         android:textSize="14sp" />
 
-                    <TextView
-                        android:id="@+id/cuisineText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Italian, Mediterranean"
-                        android:textSize="14sp" />
+<!--                    <TextView-->
+<!--                        android:id="@+id/cuisineText"-->
+<!--                        android:layout_width="wrap_content"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:text="Italian, Mediterranean"-->
+<!--                        android:textSize="14sp" />-->
                 </LinearLayout>
 
                 <LinearLayout
@@ -138,7 +156,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
-                        android:text="456 Food Ave, San Francisco"
                         android:textSize="14sp" />
                 </LinearLayout>
 
@@ -155,7 +172,7 @@
                         android:layout_height="wrap_content"
 
                         android:drawablePadding="8dp"
-                        android:text="Phí giao hàng: 15.000đ"
+                        android:text="Phí giao hàng"
                         android:textSize="14sp" />
 
                     <TextView
@@ -170,7 +187,7 @@
                         android:id="@+id/deliveryTimeText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="30-45 phút"
+                        android:text=""
                         android:textSize="14sp" />
                 </LinearLayout>
 
@@ -179,16 +196,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Authentic Italian cuisine with a modern twist. Using only the freshest ingredients sourced locally."
                     android:textSize="14sp" />
-            </LinearLayout>
+<!--                    android:text="Authentic Italian cuisine with a modern twist. Using only the freshest ingredients sourced locally."-->
 
-            <!-- Menu Categories -->
-            <com.google.android.material.tabs.TabLayout
-                android:id="@+id/menuTabLayout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:tabMode="scrollable" />
+            </LinearLayout>
 
             <!-- Menu Items -->
             <TextView
@@ -200,6 +211,15 @@
                 android:text="Menu"
                 android:textSize="18sp"
                 android:textStyle="bold" />
+
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/menuTabLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@android:color/white"
+                android:elevation="4dp"
+                app:tabMode="scrollable"
+                app:layout_behavior="@string/appbar_scrolling_view_behavior"/>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/menuItemsRecyclerView"
@@ -214,19 +234,33 @@
 
     <!-- Cart Button -->
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        >
-    <Button
-        android:id="@+id/viewOrderButton"
+        android:id="@+id/cartButtonLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_margin="16dp"
-        android:text="Giao hàng"
-        android:textColor="@android:color/white"
-        app:backgroundTint="@color/rebecca_purple"
-        />
+        android:layout_gravity="bottom"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:background="@android:color/white"
+        android:elevation="8dp"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/priceTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="30000đ"
+            android:textColor="@color/black"
+            android:textSize="16sp"
+            android:textStyle="bold"/>
+        <Button
+            android:id="@+id/viewOrderButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Giao hàng"
+            android:textColor="@android:color/white"
+            app:backgroundTint="@color/rebecca_purple"
+            />
     </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

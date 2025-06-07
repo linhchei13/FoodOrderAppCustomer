@@ -21,7 +21,6 @@ public class OrderItem {
 
     private String note;
 
-
     // Constructors
     public OrderItem() {
         this.toppings = new ArrayList<>();

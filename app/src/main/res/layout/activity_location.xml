@@ -68,8 +68,7 @@
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:src="@drawable/icons8_search"
-            android:layout_marginEnd="8dp"
-           />
+            android:layout_marginEnd="8dp"/>
 
         <EditText
             android:id="@+id/searchEditText"
@@ -96,25 +95,60 @@
             android:contentDescription="Vị trí hiện tại"/>
 
     </LinearLayout>
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tabLayout"
+
+    <LinearLayout
+        android:id="@+id/savedAddressesSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#F5F5F5"
-        android:layout_marginTop="8dp"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:layout_margin="12dp"
+        android:background="@drawable/edit_text"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/searchBar"
-        app:layout_constraintStart_toStartOf="parent">
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Dùng gần đây" />
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Da luu" />
+        tools:layout_editor_absoluteX="2dp">
 
-    </com.google.android.material.tabs.TabLayout>
-    <!-- Suggestions List -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Địa chỉ đã lưu"
+                android:textColor="@android:color/black"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/addNewButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="Thêm mới"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/savedAddressRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:orientation="vertical"
+            android:nestedScrollingEnabled="false"
+            tools:itemCount="5"
+            tools:listitem="@layout/item_saved_address" />
+
+    </LinearLayout>
+
     <ListView
         android:id="@+id/suggestionsListView"
         android:layout_width="match_parent"
@@ -124,7 +158,7 @@
         android:divider="@android:color/transparent"
         android:dividerHeight="1dp"
         android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/searchBar"
+        app:layout_constraintTop_toBottomOf="@id/savedAddressesSection"
         app:layout_constraintBottom_toBottomOf="parent"/>
 
     <!-- Empty State -->

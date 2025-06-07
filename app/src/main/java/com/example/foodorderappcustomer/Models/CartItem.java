@@ -8,36 +8,26 @@ public class CartItem {
     private String restaurantImage;
     private List<OrderItem> items;
     private double totalPrice;
-
-    private int quantity;
-
+    private int totalQuantity;
 
     public CartItem(String restaurantId, String restaurantName, String restaurantImage, List<OrderItem> items) {
         this.restaurantId = restaurantId;
         this.restaurantName = restaurantName;
         this.restaurantImage = restaurantImage;
         this.items = items;
-        this.quantity = 0;
-        this.totalPrice = 0;
-        calculateTotalPrice();
+        calculateTotals();
     }
 
-    private void calculateTotalPrice() {
+    public void calculateTotals() {
         this.totalPrice = 0;
+        this.totalQuantity = 0;
+        
         if (items != null) {
             for (OrderItem item : items) {
-                this.totalPrice += item.getItemPrice() * item.getQuantity();
+                this.totalPrice += item.getTotalPrice();
+                this.totalQuantity += item.getQuantity();
             }
         }
-    }
-
-    public int getQuantity() {
-        if (items != null) {
-            for (OrderItem item : items) {
-                this.quantity += item.getQuantity();
-            }
-        }
-        return quantity;
     }
 
     // Getters and Setters
@@ -71,10 +61,40 @@ public class CartItem {
 
     public void setItems(List<OrderItem> items) {
         this.items = items;
-        calculateTotalPrice();
+        calculateTotals();
     }
 
     public double getTotalPrice() {
         return totalPrice;
+    }
+
+    public int getTotalQuantity() {
+        return totalQuantity;
+    }
+
+    public void addItem(OrderItem item) {
+        if (items != null) {
+            items.add(item);
+            calculateTotals();
+        }
+    }
+
+    public void removeItem(OrderItem item) {
+        if (items != null) {
+            items.remove(item);
+            calculateTotals();
+        }
+    }
+
+    public void updateItemQuantity(OrderItem item, int newQuantity) {
+        if (items != null) {
+            for (OrderItem cartItem : items) {
+                if (cartItem.getItemId().equals(item.getItemId())) {
+                    cartItem.setQuantity(newQuantity);
+                    break;
+                }
+            }
+            calculateTotals();
+        }
     }
 }

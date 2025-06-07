@@ -15,6 +15,10 @@ public class MenuItem {
     private int sales;
     private int likes;
     private List<Option> availableOptions;
+
+    public MenuItem() {
+
+    }
       public MenuItem(String id, String name, double price,
                     String category, float rating, String description, String imageUrl, int sales) {
         this.id = id;
@@ -37,6 +41,10 @@ public class MenuItem {
 
     public String getId() {
         return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getName() {

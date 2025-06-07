@@ -10,8 +10,16 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
 
+        <ImageButton
+            android:id="@+id/closeButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Close"
+            android:src="@drawable/baseline_close_24" />
         <TextView
             android:id="@+id/dialogTitle"
             android:layout_width="0dp"
@@ -19,16 +27,8 @@
             android:layout_weight="1"
             android:text="Thêm món mới"
             android:textColor="@android:color/black"
-            android:textSize="18sp"
+            android:textSize="24sp"
             android:textStyle="bold" />
-
-        <ImageButton
-            android:id="@+id/closeButton"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Close"
-            android:src="@android:drawable/ic_menu_close_clear_cancel" />
     </LinearLayout>
 
     <LinearLayout
@@ -55,7 +55,7 @@
                 android:id="@+id/foodName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Trà Sữa Đặc Biệt"
+                android:text="Mon moi"
                 android:textColor="@android:color/black"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -98,15 +98,16 @@
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
             <ImageButton
                 android:id="@+id/decreaseButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@android:color/transparent"
                 android:contentDescription="Decrease"
-                android:src="@android:drawable/ic_menu_close_clear_cancel" />
+                android:src="@drawable/baseline_indeterminate_check_box_24" />
 
             <TextView
                 android:id="@+id/quantityTextView"
@@ -120,11 +121,11 @@
 
             <ImageButton
                 android:id="@+id/increaseButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@android:color/transparent"
                 android:contentDescription="Increase"
-                android:src="@android:drawable/ic_input_add" />
+                android:src="@drawable/baseline_add_box_24" />
         </LinearLayout>
     </LinearLayout>
 
@@ -132,7 +133,8 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="8dp"
-        android:background="#EEEEEE" />    <LinearLayout
+        android:background="#EEEEEE" />
+    <LinearLayout
         android:id="@+id/optionsContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -167,7 +169,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:backgroundTint="#FF5722"
+        android:backgroundTint="@color/rebecca_purple"
         android:text="Thêm vào giỏ hàng - 30.000đ"
         android:textColor="@android:color/white" />
 </LinearLayout>

@@ -18,12 +18,6 @@ public interface AutoCompleteApi {
             .build()
             .create(AutoCompleteApi.class);
     @GET("Place/AutoComplete")
-
-//    Single<Result> getDistance(@Query("api_key") String key,
-//                               @Query("origins") String origins,
-//                               @Query("destinations") String destinations,
-//                               @Query("vehicle") String vehicle
-//                               );
     Call<PlaceResponse> getPlace(@Query("api_key") String key,
                                  @Query("input") String input,
                                  @Query("limit") int limit,

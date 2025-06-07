@@ -41,7 +41,7 @@
                     android:layout_marginStart="8dp"
                     android:layout_toEndOf="@id/backButton"
                     android:text="Chi tiết đơn hàng"
-                    android:textColor="@android:color/white"
+                    android:textColor="@android:color/black"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -58,9 +58,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            >
 
-            <!-- Order Status Card -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -100,12 +99,10 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Restaurant Info Card -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                app:cardCornerRadius="8dp"
                 app:cardElevation="4dp">
 
                 <LinearLayout
@@ -196,7 +193,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:nestedScrollingEnabled="false" />
+                        android:nestedScrollingEnabled="false"
+                        tools:listitem="@layout/item_order_item"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -271,6 +269,28 @@
                             android:textSize="14sp" />
                     </LinearLayout>
 
+                    <LinearLayout
+                        android:id="@+id/discountLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Giảm giá" />
+
+                        <TextView
+                            android:id="@+id/discountTextView"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="#FF0000"
+                            android:text="0đ" />
+                    </LinearLayout>
+
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
@@ -296,101 +316,12 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="0đ"
-                            android:textColor="@android:color/holo_red_dark"
+                            android:textColor="@android:color/black"
                             android:textSize="16sp"
                             android:textStyle="bold" />
                     </LinearLayout>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
-
-            <!-- Review Card (Only visible for completed orders) -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/reviewCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="4dp"
-                android:visibility="gone">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Đánh giá đơn hàng"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <RatingBar
-                        android:id="@+id/ratingBar"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:numStars="5"
-                        android:stepSize="0.5" />
-
-                    <EditText
-                        android:id="@+id/editTextReview"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:background="@drawable/edit_text"
-                        android:hint="Nhập đánh giá của bạn"
-                        android:inputType="textMultiLine"
-                        android:minLines="3"
-                        android:padding="12dp" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal">
-
-                        <ImageView
-                            android:id="@+id/imageReview1"
-                            android:layout_width="80dp"
-                            android:layout_height="80dp"
-                            android:layout_marginEnd="8dp"
-                            android:background="@drawable/edit_text"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/baseline_person_24" />
-
-                        <ImageView
-                            android:id="@+id/imageReview2"
-                            android:layout_width="80dp"
-                            android:layout_height="80dp"
-                            android:layout_marginEnd="8dp"
-                            android:background="@drawable/edit_text"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/baseline_person_24" />
-
-                        <ImageView
-                            android:id="@+id/imageReview3"
-                            android:layout_width="80dp"
-                            android:layout_height="80dp"
-                            android:background="@drawable/edit_text"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/baseline_add_box_24" />
-                    </LinearLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/buttonSubmitReview"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:text="Gửi đánh giá"
-                        android:textColor="@android:color/white"
-                        app:backgroundTint="@color/status_completed" />
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

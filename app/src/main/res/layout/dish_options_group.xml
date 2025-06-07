@@ -8,10 +8,10 @@
         android:id="@+id/optionGroupTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#F2F2F2"
         android:padding="8dp"
         android:text="Option Group Name"
-        android:textColor="#9E9E9E" />
+        android:textColor="@color/black"
+        android:textStyle="bold"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/optionsRecyclerView"

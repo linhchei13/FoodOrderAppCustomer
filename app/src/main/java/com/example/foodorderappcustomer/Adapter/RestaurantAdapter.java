@@ -6,7 +6,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.RatingBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -69,10 +68,12 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
         private ImageView restaurantImage;
         private TextView restaurantName;
         private TextView restaurantAddress;
-        private RatingBar restaurantRating;
         private TextView ratingValue;
         private TextView deliveryTime;
         private TextView distance;
+
+        private TextView averagePriceTV;
+        private TextView ratingCountTv;
         private ChipGroup categoryChipGroup;
 
         public RestaurantViewHolder(@NonNull View itemView) {
@@ -80,10 +81,10 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
             restaurantImage = itemView.findViewById(R.id.restaurantImage);
             restaurantName = itemView.findViewById(R.id.restaurantName);
             restaurantAddress = itemView.findViewById(R.id.restaurantAddress);
-            restaurantRating = itemView.findViewById(R.id.restaurantRating);
             ratingValue = itemView.findViewById(R.id.ratingValue);
             deliveryTime = itemView.findViewById(R.id.deliveryTime);
-            distance = itemView.findViewById(R.id.distance);
+            averagePriceTV = itemView.findViewById(R.id.averagePriceTV);
+            ratingCountTv = itemView.findViewById(R.id.ratingCountTv);
             categoryChipGroup = itemView.findViewById(R.id.categoryChipGroup);
         }
 
@@ -93,8 +94,10 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
             
             // Set rating
             float rating = (float) restaurant.getRating();
-            restaurantRating.setRating(rating);
             ratingValue.setText(String.format("%.1f", rating));
+            ratingCountTv.setText(String.format("(%d)", restaurant.getTotalRatings()));
+
+            averagePriceTV.setText("Khoảng " + restaurant.getAveragePrice() + "K");
             
             // Set delivery time
             int avgTime = restaurant.getAverageDeliveryTime();
@@ -105,7 +108,7 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
             }
             
             // Set distance (placeholder for now)
-            distance.setText(String.format("%s", currencyFormat.format(restaurant.getDeliveryFee())));
+//            distance.setText(String.format("%s", currencyFormat.format(restaurant.getDeliveryFee())));
             
             // Set restaurant image
             ImageUtils.loadImage(restaurant.getImageUrl(), restaurantImage, R.drawable.bg, R.drawable.logo2);

@@ -109,16 +109,42 @@
                     android:layout_height="0dp"
                     android:layout_weight="1" />
 
-                <TextView
-                    android:id="@+id/add"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:background="@drawable/add_bg"
-                    android:gravity="center"
-                    android:text="+"
-                    android:textAlignment="center"
-                    android:textColor="@android:color/white"
-                    android:textSize="20sp" />
+                <LinearLayout
+                    android:id="@+id/quantityControls"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageButton
+                        android:id="@+id/decreaseButton"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="@android:color/transparent"
+                        android:contentDescription="Decrease"
+                        android:visibility="gone"
+                        android:src="@drawable/baseline_indeterminate_check_box_24" />
+
+                    <TextView
+                        android:id="@+id/quantityTextView"
+                        android:layout_width="32dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="1"
+                        android:textColor="@android:color/black"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"/>
+
+                    <ImageButton
+                        android:id="@+id/increaseButton"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="@android:color/transparent"
+                        android:contentDescription="Increase"
+                        android:src="@drawable/baseline_add_box_24" />
+                </LinearLayout>
+
             </LinearLayout>
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>

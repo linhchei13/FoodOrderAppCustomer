@@ -1,6 +1,7 @@
 package com.example.foodorderappcustomer.Models;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Restaurant implements Serializable {
@@ -9,13 +10,20 @@ public class Restaurant implements Serializable {
     private String description;
     private String address;
     private double rating;
-    private int imageResource;
+
+    private int totalRatings;
     private String imageUrl;
     private double deliveryFee;
     private int averageDeliveryTime;
     private List<String> cuisineTypes;
     private double distance;
+    private String averagePrice;
 
+    private String category;
+
+    private List<MenuItem> menuItems;
+
+    private int imageResource;
     // Default constructor for Firebase
     public Restaurant() {
     }
@@ -28,6 +36,9 @@ public class Restaurant implements Serializable {
         this.rating = rating;
     }
 
+    public void setImageResource(int imageResource) {
+        this.imageResource = imageResource;
+    }
 
     // Getters and setters
     public String getId() {
@@ -70,14 +81,18 @@ public class Restaurant implements Serializable {
         this.rating = rating;
     }
 
+    public int getTotalRatings() {
+        return totalRatings;
+    }
+
+    public void setTotalRatings(int totalRatings) {
+        this.totalRatings = totalRatings;
+    }
 
     public double getDistance() {
         return distance;
     }
 
-    public void setImageResource(int imageResource) {
-        this.imageResource = imageResource;
-    }
 
     public String getImageUrl() {
         return imageUrl;
@@ -85,6 +100,14 @@ public class Restaurant implements Serializable {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+    
+    public String getAveragePrice() {
+        return averagePrice;
+    }
+
+    public void setAveragePrice(String averagePrice) {
+        this.averagePrice = averagePrice;
     }
 
     public double getDeliveryFee() {
@@ -103,8 +126,22 @@ public class Restaurant implements Serializable {
         this.averageDeliveryTime = averageDeliveryTime;
     }
 
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
     public List<String> getCuisineTypes() {
+        cuisineTypes = new ArrayList<>();
+        cuisineTypes.add(category);
         return cuisineTypes;
+    }
+
+    public List<MenuItem> getMenuItems() {
+        return menuItems;
     }
 
     public void setCuisineTypes(List<String> cuisineTypes) {

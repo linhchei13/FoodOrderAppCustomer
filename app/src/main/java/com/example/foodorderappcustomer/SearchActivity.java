@@ -3,14 +3,17 @@ package com.example.foodorderappcustomer;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -24,228 +27,325 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class SearchActivity extends AppCompatActivity {
-    private EditText searchEditText;
-    private ImageButton filterButton;
-    private LinearLayout filterLayout;
-    private RecyclerView searchResultsRecyclerView;
-    private RadioGroup priceRangeGroup;
-    private RadioGroup deliveryTimeGroup;
-    private RadioGroup distanceGroup;
-    private Button applyFilterButton;
+    private RadioGroup sortGroup;
+    private RadioButton rbDefault, rbCheapest, rbBestSeller, rbNearest, rbBestRating;
+    private Button btn35Rating, btn40Rating, btn45Rating;
+    private Button btnPriceRange1, btnPriceRange2;
+    private EditText etMinPrice, etMaxPrice;
+    private Button btnReset, btnConfirm;
+    private EditText etSearchQuery;
+    private ImageButton btnBack, btnClearSearch, btnFilter;
+    private LinearLayout filterSection;
+    private boolean isFilterVisible = false;
 
-    private RestaurantAdapter restaurantAdapter;
-    private List<Restaurant> allRestaurants;
-    private List<Restaurant> filteredRestaurants;
-    private DatabaseReference databaseReference;
+    // Results components
+    private RecyclerView recyclerView;
+    private RestaurantAdapter adapter;
+    private List<Restaurant> restaurantList;
+    private List<Restaurant> filteredList;
+
+    // Filter parameters
+    private double minRating = 0;
+    private double minPrice = 0;
+    private double maxPrice = Double.MAX_VALUE;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_search);
+        setContentView(R.layout.activity_search_new);
 
-        // Initialize views
-        searchEditText = findViewById(R.id.searchEditText);
-        filterButton = findViewById(R.id.filterButton);
-        filterLayout = findViewById(R.id.filterLayout);
-        searchResultsRecyclerView = findViewById(R.id.searchResultsRecyclerView);
-        priceRangeGroup = findViewById(R.id.priceRangeGroup);
-        deliveryTimeGroup = findViewById(R.id.deliveryTimeGroup);
-        distanceGroup = findViewById(R.id.distanceGroup);
-        applyFilterButton = findViewById(R.id.applyFilterButton);
-
-        // Initialize lists
-        allRestaurants = new ArrayList<>();
-        filteredRestaurants = new ArrayList<>();
-
-        // Setup RecyclerView
-        restaurantAdapter = new RestaurantAdapter(filteredRestaurants);
-        searchResultsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        searchResultsRecyclerView.setAdapter(restaurantAdapter);
-
-        // Initialize Firebase
-        databaseReference = FirebaseDatabase.getInstance().getReference();
-
-        // Setup click listeners
-        setupClickListeners();
-
-        // Setup search functionality
-        setupSearch();
-
-        // Load restaurants
-        loadRestaurants();
+        initViews();
+        setupData();
+        setupListeners();
+        setupRecyclerView();
     }
 
-    private void setupClickListeners() {
-        filterButton.setOnClickListener(v -> {
-            if (filterLayout.getVisibility() == View.VISIBLE) {
-                filterLayout.setVisibility(View.GONE);
-            } else {
-                filterLayout.setVisibility(View.VISIBLE);
+    private void initViews() {
+        // Sort group
+        sortGroup = findViewById(R.id.sortGroup);
+        rbDefault = findViewById(R.id.rbDefault);
+        rbCheapest = findViewById(R.id.rbCheapest);
+        rbBestSeller = findViewById(R.id.rbBestSeller);
+        rbNearest = findViewById(R.id.rbNearest);
+        rbBestRating = findViewById(R.id.rbBestRating);
+        
+        // Filter button and section
+        btnFilter = findViewById(R.id.btnFilter);
+        filterSection = findViewById(R.id.filterSection);
+        
+        // Rating buttons
+        btn35Rating = findViewById(R.id.btn35Rating);
+        btn40Rating = findViewById(R.id.btn40Rating);
+        btn45Rating = findViewById(R.id.btn45Rating);
+        
+        // Price range
+        btnPriceRange1 = findViewById(R.id.btnPriceRange1);
+        btnPriceRange2 = findViewById(R.id.btnPriceRange2);
+        etMinPrice = findViewById(R.id.etMinPrice);
+        etMaxPrice = findViewById(R.id.etMaxPrice);
+        
+        // Action buttons
+        btnReset = findViewById(R.id.btnReset);
+        btnConfirm = findViewById(R.id.btnConfirm);
+        
+        // Search
+        etSearchQuery = findViewById(R.id.etSearchQuery);
+        btnBack = findViewById(R.id.btnBack);
+        btnClearSearch = findViewById(R.id.btnClearSearch);
+
+        // Results view
+        recyclerView = findViewById(R.id.recyclerView);
+    }
+
+    private void toggleFilterSection() {
+        isFilterVisible = !isFilterVisible;
+        filterSection.setVisibility(isFilterVisible ? View.VISIBLE : View.GONE);
+    }
+
+    private void setupData() {
+        restaurantList = new ArrayList<>();
+        filteredList = new ArrayList<>();
+        
+        // Load data from Firebase
+        DatabaseReference reference = FirebaseDatabase.getInstance().getReference();
+        reference.child("restaurants").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                restaurantList.clear();
+                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                    Restaurant restaurant = snapshot.getValue(Restaurant.class);
+                    restaurant.setId(snapshot.getKey());
+                    restaurantList.add(restaurant);
+                }
+                
+                // Initialize filtered list with all restaurants
+                filteredList.clear();
+                filteredList.addAll(restaurantList);
+                adapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Toast.makeText(SearchActivity.this, "Lỗi khi tải dữ liệu", Toast.LENGTH_SHORT).show();
             }
         });
-
-        applyFilterButton.setOnClickListener(v -> {
-            applyFilters();
-        });
     }
 
-    private void setupSearch() {
-        searchEditText.addTextChangedListener(new TextWatcher() {
+    private void setupRecyclerView() {
+        adapter = new RestaurantAdapter(filteredList);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setAdapter(adapter);
+    }
+
+    private void setupListeners() {
+        // Search functionality
+        etSearchQuery.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                filterRestaurants(s.toString());
-            }
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
 
             @Override
-            public void afterTextChanged(Editable s) {}
-        });
-    }
-
-    private void loadRestaurants() {
-        databaseReference.child("restaurants").addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                allRestaurants.clear();
-                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    String id = snapshot.getKey();
-                    String name = snapshot.child("name").getValue(String.class);
-                    String description = snapshot.child("description").getValue(String.class);
-                    String address = "";
-                    if (snapshot.hasChild("address")) {
-                        DataSnapshot addressSnapshot = snapshot.child("address");
-                        String street = addressSnapshot.child("street").getValue(String.class);
-                        String city = addressSnapshot.child("city").getValue(String.class);
-                        String state = addressSnapshot.child("state").getValue(String.class);
-
-                        if (street != null && city != null) {
-                            address = street + ", " + city;
-                            if (state != null) {
-                                address += ", " + state;
-                            }
-                        }
-                    }
-
-                    double rating = 0.0;
-                    if (snapshot.hasChild("rating")) {
-                        Double ratingValue = snapshot.child("rating").getValue(Double.class);
-                        if (ratingValue != null) {
-                            rating = ratingValue;
-                        }
-                    }
-
-                    double deliveryFee = 0.0;
-                    if (snapshot.hasChild("deliveryFee")) {
-                        Double deliveryFeeValue = snapshot.child("deliveryFee").getValue(Double.class);
-                        if (deliveryFeeValue != null) {
-                            deliveryFee = deliveryFeeValue;
-                        }
-                    }
-
-                    int deliveryTime = 0;
-                    if (snapshot.hasChild("averageDeliveryTime")) {
-                        Integer deliveryTimeValue = snapshot.child("averageDeliveryTime").getValue(Integer.class);
-                        if (deliveryTimeValue != null) {
-                            deliveryTime = deliveryTimeValue;
-                        }
-                    }
-
-                    Restaurant restaurant = new Restaurant(id, name, description, address, rating);
-                    restaurant.setDeliveryFee(deliveryFee);
-                    restaurant.setAverageDeliveryTime(deliveryTime);
-
-                    if (snapshot.hasChild("imageUrl")) {
-                        String imageUrl = snapshot.child("imageUrl").getValue(String.class);
-                        restaurant.setImageUrl(imageUrl);
-                    } else {
-                        restaurant.setImageResource(R.drawable.logo2);
-                    }
-
-                    allRestaurants.add(restaurant);
-                }
-                filteredRestaurants.clear();
-                filteredRestaurants.addAll(allRestaurants);
-                restaurantAdapter.notifyDataSetChanged();
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Toast.makeText(SearchActivity.this, "Lỗi khi tải nhà hàng", Toast.LENGTH_SHORT).show();
+            public void afterTextChanged(Editable s) {
+                performSearch();
             }
         });
+        
+        // Clear search field
+        btnClearSearch.setOnClickListener(v -> {
+            etSearchQuery.setText("");
+            performSearch();
+        });
+        
+        // Back button
+        btnBack.setOnClickListener(v -> finish());
+        
+        // Rating filter buttons
+        btn35Rating.setOnClickListener(v -> {
+            minRating = 3.5;
+            resetRatingButtonsStyle();
+            btn35Rating.setBackground(getResources().getDrawable(R.drawable.button_selected));
+            applyFilters();
+        });
+        
+        btn40Rating.setOnClickListener(v -> {
+            minRating = 4.0;
+            resetRatingButtonsStyle();
+            btn40Rating.setBackground(getResources().getDrawable(R.drawable.button_selected));
+            applyFilters();
+        });
+        
+        btn45Rating.setOnClickListener(v -> {
+            minRating = 4.5;
+            resetRatingButtonsStyle();
+            btn45Rating.setBackground(getResources().getDrawable(R.drawable.button_selected));
+            applyFilters();
+        });
+        
+        // Price range buttons
+        btnPriceRange1.setOnClickListener(v -> {
+            minPrice = 0;
+            maxPrice = 30000;
+            etMinPrice.setText(String.valueOf(minPrice));
+            etMaxPrice.setText(String.valueOf(maxPrice));
+            resetPriceButtonsStyle();
+            btnPriceRange1.setBackground(getResources().getDrawable(R.drawable.button_selected));
+            applyFilters();
+        });
+        
+        btnPriceRange2.setOnClickListener(v -> {
+            minPrice = 30000;
+            maxPrice = 50000;
+            etMinPrice.setText(String.valueOf(minPrice));
+            etMaxPrice.setText(String.valueOf(maxPrice));
+            resetPriceButtonsStyle();
+            btnPriceRange2.setBackground(getResources().getDrawable(R.drawable.button_selected));
+            applyFilters();
+        });
+        
+        // Reset button
+        btnReset.setOnClickListener(v -> resetFilters());
+        
+        // Confirm button
+        btnConfirm.setOnClickListener(v -> applyFilters());
+        
+        // Sort group
+        sortGroup.setOnCheckedChangeListener((group, checkedId) -> applySort());
+        
+        // Filter button
+        btnFilter.setOnClickListener(v -> toggleFilterSection());
     }
 
-    private void filterRestaurants(String query) {
-        filteredRestaurants.clear();
+    private void resetRatingButtonsStyle() {
+        btn35Rating.setBackground(getResources().getDrawable(R.drawable.button_outline));
+        btn40Rating.setBackground(getResources().getDrawable(R.drawable.button_outline));
+        btn45Rating.setBackground(getResources().getDrawable(R.drawable.button_outline));
+    }
+
+    private void resetPriceButtonsStyle() {
+        btnPriceRange1.setBackground(getResources().getDrawable(R.drawable.button_outline));
+        btnPriceRange2.setBackground(getResources().getDrawable(R.drawable.button_outline));
+    }
+
+    private void performSearch() {
+        String query = etSearchQuery.getText().toString().toLowerCase().trim();
+        
+        // Apply search query
+        filteredList.clear();
+        
         if (query.isEmpty()) {
-            filteredRestaurants.addAll(allRestaurants);
+            filteredList.addAll(restaurantList);
         } else {
-            String lowerCaseQuery = query.toLowerCase();
-            for (Restaurant restaurant : allRestaurants) {
-                if (restaurant.getName().toLowerCase().contains(lowerCaseQuery) ||
-                    (restaurant.getAddress() != null && restaurant.getAddress().toLowerCase().contains(lowerCaseQuery))) {
-                    filteredRestaurants.add(restaurant);
+            for (Restaurant restaurant : restaurantList) {
+                if (restaurant.getName().toLowerCase().contains(query) || 
+                    (restaurant.getDescription() != null && restaurant.getDescription().toLowerCase().contains(query))) {
+                    filteredList.add(restaurant);
                 }
             }
         }
-        restaurantAdapter.notifyDataSetChanged();
+        
+        // Apply any active filters
+        applyFilters();
+    }
+
+    private void resetFilters() {
+        // Reset sort options
+        rbDefault.setChecked(true);
+        
+        // Reset rating
+        minRating = 0;
+        resetRatingButtonsStyle();
+        
+        // Reset price range
+        minPrice = 0;
+        maxPrice = Double.MAX_VALUE;
+        etMinPrice.setText("");
+        etMaxPrice.setText("");
+        resetPriceButtonsStyle();
+        
+        // Clear search and reset list
+        etSearchQuery.setText("");
+        filteredList.clear();
+        filteredList.addAll(restaurantList);
+        adapter.notifyDataSetChanged();
     }
 
     private void applyFilters() {
-        filteredRestaurants.clear();
-        List<Restaurant> tempList = new ArrayList<>(allRestaurants);
-
-        // Apply price filter
-        int selectedPriceId = priceRangeGroup.getCheckedRadioButtonId();
-        if (selectedPriceId != -1) {
-            if (selectedPriceId == R.id.priceRange1) {
-                tempList.removeIf(restaurant -> restaurant.getDeliveryFee() >= 50000);
-            } else if (selectedPriceId == R.id.priceRange2) {
-                tempList.removeIf(restaurant -> 
-                    restaurant.getDeliveryFee() < 50000 || restaurant.getDeliveryFee() > 100000);
-            } else if (selectedPriceId == R.id.priceRange3) {
-                tempList.removeIf(restaurant -> restaurant.getDeliveryFee() <= 100000);
+        // Get values from min/max price fields if provided
+        try {
+            String minPriceText = etMinPrice.getText().toString();
+            String maxPriceText = etMaxPrice.getText().toString();
+            
+            if (!minPriceText.isEmpty()) {
+                minPrice = Double.parseDouble(minPriceText);
+            }
+            
+            if (!maxPriceText.isEmpty()) {
+                maxPrice = Double.parseDouble(maxPriceText);
+            }
+        } catch (NumberFormatException e) {
+            Toast.makeText(this, "Vui lòng nhập giá hợp lệ", Toast.LENGTH_SHORT).show();
+        }
+        
+        // Apply search first
+        String query = etSearchQuery.getText().toString().toLowerCase().trim();
+        List<Restaurant> searchResults = new ArrayList<>();
+        
+        if (query.isEmpty()) {
+            searchResults.addAll(restaurantList);
+        } else {
+            for (Restaurant restaurant : restaurantList) {
+                if (restaurant.getName().toLowerCase().contains(query) || 
+                    (restaurant.getDescription() != null && restaurant.getDescription().toLowerCase().contains(query))) {
+                    searchResults.add(restaurant);
+                }
             }
         }
-
-        // Apply delivery time filter
-        int selectedTimeId = deliveryTimeGroup.getCheckedRadioButtonId();
-        if (selectedTimeId != -1) {
-            if (selectedTimeId == R.id.timeRange1) {
-                tempList.removeIf(restaurant -> restaurant.getAverageDeliveryTime() >= 30);
-            } else if (selectedTimeId == R.id.timeRange2) {
-                tempList.removeIf(restaurant -> 
-                    restaurant.getAverageDeliveryTime() < 30 || restaurant.getAverageDeliveryTime() > 60);
-            } else if (selectedTimeId == R.id.timeRange3) {
-                tempList.removeIf(restaurant -> restaurant.getAverageDeliveryTime() <= 60);
+        
+        // Apply filters to search results
+        filteredList.clear();
+        
+        for (Restaurant restaurant : searchResults) {
+            // Apply rating filter
+            if (restaurant.getRating() >= minRating) {
+                // Apply price filter
+                String priceStr = restaurant.getAveragePrice();
+                double price = Double.valueOf(priceStr) * 1000;
+                if (price >= minPrice && price <= maxPrice) {
+                    filteredList.add(restaurant);
+                }
             }
         }
-
-        // Apply distance filter
-        int selectedDistanceId = distanceGroup.getCheckedRadioButtonId();
-        if (selectedDistanceId != -1) {
-            // Note: This is a placeholder. You'll need to implement actual distance calculation
-            // based on user's location and restaurant's location
-            if (selectedDistanceId == R.id.distanceRange1) {
-                // Filter for restaurants within 1km
-                tempList.removeIf(restaurant -> restaurant.getDistance() > 1.0);
-            } else if (selectedDistanceId == R.id.distanceRange2) {
-                // Filter for restaurants between 1km and 3km
-                tempList.removeIf(restaurant -> 
-                    restaurant.getDistance() <= 1.0 || restaurant.getDistance() > 3.0);
-            } else if (selectedDistanceId == R.id.distanceRange3) {
-                // Filter for restaurants beyond 3km
-                tempList.removeIf(restaurant -> restaurant.getDistance() <= 3.0);
-            }
-        }
-
-        filteredRestaurants.addAll(tempList);
-        restaurantAdapter.notifyDataSetChanged();
-        filterLayout.setVisibility(View.GONE);
+        
+        // Apply sorting
+        applySort();
+        
+        adapter.notifyDataSetChanged();
     }
-} 
+
+    private void applySort() {
+        int checkedId = sortGroup.getCheckedRadioButtonId();
+        
+        if (checkedId == R.id.rbCheapest) {
+            Collections.sort(filteredList, Comparator.comparing(Restaurant::getAveragePrice));
+        } else if (checkedId == R.id.rbBestSeller) {
+            // Sort by popularity (you may need to add a popularity field to Restaurant model)
+            // For now, just using delivery time as an example
+            Collections.sort(filteredList, Comparator.comparingInt(Restaurant::getAverageDeliveryTime));
+        } else if (checkedId == R.id.rbNearest) {
+            // Sort by distance (you may need to calculate distance based on user location)
+            // For now, using delivery time as proxy
+            Collections.sort(filteredList, Comparator.comparingInt(Restaurant::getAverageDeliveryTime));
+        } else if (checkedId == R.id.rbBestRating) {
+            Collections.sort(filteredList, (r1, r2) -> Double.compare(r2.getRating(), r1.getRating()));
+        }
+        
+        adapter.notifyDataSetChanged();
+    }
+}

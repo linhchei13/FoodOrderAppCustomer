@@ -29,7 +29,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class FoodCustomizationDialog {    private Context context;
+public class FoodCustomizationDialog {
+    private Context context;
     private Dialog dialog;
     private MenuItem menuItem;
     private OnFoodCustomizedListener listener;
@@ -38,9 +39,12 @@ public class FoodCustomizationDialog {    private Context context;
     private String customerNote = "";
     private double totalPrice = 0;
     private NumberFormat currencyFormat;
-    private List<OptionGroup> optionGroups = new ArrayList<>();    public interface OnFoodCustomizedListener {
+    private List<OptionGroup> optionGroups = new ArrayList<>();
+    public interface OnFoodCustomizedListener {
         void onFoodCustomized(MenuItem menuItem, int quantity, List<Option> options, String note, double totalPrice);
-    }    public FoodCustomizationDialog(Context context, MenuItem menuItem, OnFoodCustomizedListener listener) {
+    }
+
+    public FoodCustomizationDialog(Context context, MenuItem menuItem, OnFoodCustomizedListener listener) {
         this.context = context;
         this.menuItem = menuItem;
         this.listener = listener;
@@ -48,39 +52,23 @@ public class FoodCustomizationDialog {    private Context context;
         totalPrice = menuItem.getPrice();
         
         // Create default option groups if none are provided in the menu item
-        createDefaultOptionGroups();
+//        createDefaultOptionGroups();
         setupDialog();
     }
-    
-    private void createDefaultOptionGroups() {
-        // Create Ice Option group
-        OptionGroup iceOptionGroup = new OptionGroup("ice", "Đá (Topping, tối đa 1)", 1, false);
-        iceOptionGroup.addOption(new Option("ice_50", "50% đá", 0));
-        iceOptionGroup.addOption(new Option("ice_70", "70% đá", 0));
-        iceOptionGroup.addOption(new Option("ice_100", "100% đá", 0));
-        optionGroups.add(iceOptionGroup);
-        
-        // Create Size Option group
-        OptionGroup sizeOptionGroup = new OptionGroup("size", "SIZE (Topping, tối đa 1)", 1, false);
-        sizeOptionGroup.addOption(new Option("upsize", "Upsize", 6000));
-        optionGroups.add(sizeOptionGroup);
-        
-        // Add any available options from the menu item
-        if (menuItem.getAvailableOptions() != null && !menuItem.getAvailableOptions().isEmpty()) {
-            OptionGroup additionalOptionGroup = new OptionGroup("additional", "Thêm Topping", 5, false);
-            for (Option option : menuItem.getAvailableOptions()) {
-                additionalOptionGroup.addOption(option);
-            }
-            optionGroups.add(additionalOptionGroup);
-        }
-    }    private void setupDialog() {
+    private void setupDialog() {
         dialog = new Dialog(context);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_food_customization);
 
-        // Set dialog width to match parent
+        // Set dialog width to match parent and height to half screen
         Window window = dialog.getWindow();
         if (window != null) {
+            // Get screen height
+            android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
+            ((android.app.Activity) context).getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+            int screenHeight = displayMetrics.heightPixels;
+            
+            // Set dialog to take up half screen height
             window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             window.setGravity(Gravity.BOTTOM);
             window.setBackgroundDrawableResource(android.R.color.transparent);

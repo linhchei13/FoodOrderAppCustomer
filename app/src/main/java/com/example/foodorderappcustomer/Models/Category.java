@@ -9,14 +9,18 @@ public class Category {
     private String imageUrl;
     private int imageResource;
 
-    // Default constructor for Firebase
-
     public Category(String id, String name, String description) {
         this.id = id;
         this.name = name;
         this.description = description;
     }
 
+    public Category(String id, String name, String description, String imageUrl) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.imageUrl = imageUrl;
+    }
     // Getters and setters
     public String getId() {
         return id;

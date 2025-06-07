@@ -1,10 +1,10 @@
 package com.example.foodorderappcustomer;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -16,7 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorderappcustomer.Adapter.OptionAdapter;
 import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.Models.Option;
-import com.example.foodorderappcustomer.util.CartManager;
+import com.example.foodorderappcustomer.util.OrderItemManager;
 import com.example.foodorderappcustomer.util.ImageUtils;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.button.MaterialButton;
@@ -66,6 +66,7 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
     private double totalPrice;
     private List<Option> options = new ArrayList<>();
     private Map<String, Option> selectedToppings = new HashMap<>();
+    private String restaurantName;
 
     // Formatting
     private NumberFormat currencyFormat;
@@ -75,7 +76,7 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
     private StorageReference storageReference;
 
     // Add CartManager field
-    private CartManager cartManager;
+    private OrderItemManager orderItemManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,25 +91,34 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
         storageReference = FirebaseStorage.getInstance().getReference();
 
         // Initialize CartManager
-        cartManager = CartManager.getInstance(this);
+        orderItemManager = OrderItemManager.getInstance(this);
 
         // Initialize UI components
         initializeViews();
 
-        // Get food ID from intent
+        // Get food ID and restaurant info from intent
         foodId = getIntent().getStringExtra("FOOD_ID");
+        restaurantId = getIntent().getStringExtra("RESTAURANT_ID");
+        restaurantName = getIntent().getStringExtra("RESTAURANT_NAME");
+        
+        // Get current quantity from intent if available
+        int currentQuantity = getIntent().getIntExtra("CURRENT_QUANTITY", 1);
+        quantity = currentQuantity;
+
         if (foodId == null) {
             Toast.makeText(this, "Không tìm thấy thông tin món ăn", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
-        restaurantId = getIntent().getStringExtra("RESTAURANT_ID");
 
         // Load food details
         loadFoodDetails();
 
         // Set up click listeners
         setupClickListeners();
+
+        // Update quantity display
+        updateQuantityDisplay();
     }
 
     private void initializeViews() {
@@ -265,6 +275,10 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
         });
     }
 
+    private void updateQuantityDisplay() {
+        quantityTextView.setText(String.valueOf(quantity));
+        updateTotalPrice();
+    }
 
     private void setupClickListeners() {
         // Back button
@@ -350,28 +364,45 @@ public class FoodDetailActivity extends AppCompatActivity implements OptionAdapt
     }
 
     private void addToCart() {
-        // Create a list of selected toppings
-        List<Option> selectedToppingsList = new ArrayList<>(selectedToppings.values());
+        // Check if item already exists in cart
+        OrderItem existingItem = null;
+        for (OrderItem cartItem : orderItemManager.getCartItems()) {
+            if (cartItem.getItemId().equals(foodId)) {
+                existingItem = cartItem;
+                break;
+            }
+        }
+
+        if (existingItem != null) {
+            // Update existing item quantity
+            orderItemManager.updateItemQuantity(existingItem, quantity);
+            Toast.makeText(this, "Đã cập nhật số lượng " + foodName, Toast.LENGTH_SHORT).show();
+        } else {
+            // Create a list of selected toppings
+            List<Option> selectedToppingsList = new ArrayList<>(selectedToppings.values());
+            
+            // Create a new cart item
+            OrderItem cartItem = new OrderItem(
+                foodId,
+                restaurantId,
+                foodName,
+                foodPrice,
+                quantity,
+                foodCategory, 
+                selectedToppingsList,
+                foodImageUrl
+            );
+            
+            // Add to cart using CartManager
+            orderItemManager.addItem(cartItem);
+            Toast.makeText(this, foodName + " đã được thêm vào giỏ hàng", Toast.LENGTH_SHORT).show();
+        }
         
-        // Create a cart item using the CartItem class
-        OrderItem cartItem = new OrderItem(
-            foodId,
-            "", // restaurantId (can get from context if needed)
-            foodName,
-            foodPrice,
-            quantity,
-            foodCategory, 
-            selectedToppingsList,
-            foodImageUrl
-        );
-        
-        // Add to cart using CartManager
-        cartManager.addItem(cartItem);
-        
-        // Show success message
-        Toast.makeText(this, foodName + " đã được thêm vào giỏ hàng", Toast.LENGTH_SHORT).show();
-        
-        // Close the activity
+        // Return to restaurant menu with result
+        Intent resultIntent = new Intent();
+        resultIntent.putExtra("RESTAURANT_ID", restaurantId);
+        resultIntent.putExtra("RESTAURANT_NAME", restaurantName);
+        setResult(RESULT_OK, resultIntent);
         finish();
     }
 

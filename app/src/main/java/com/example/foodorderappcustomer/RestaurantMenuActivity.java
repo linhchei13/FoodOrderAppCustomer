@@ -9,11 +9,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -23,7 +25,10 @@ import com.example.foodorderappcustomer.Adapter.MenuItemAdapter;
 import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.Models.MenuItem;
 import com.example.foodorderappcustomer.Models.Option;
-import com.example.foodorderappcustomer.util.CartManager;
+import com.example.foodorderappcustomer.Models.Restaurant;
+import com.example.foodorderappcustomer.Models.Review;
+import com.example.foodorderappcustomer.util.OrderItemManager;
+import com.example.foodorderappcustomer.util.FoodCustomizationDialog;
 import com.example.foodorderappcustomer.util.ImageUtils;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.tabs.TabLayout;
@@ -42,8 +47,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class RestaurantMenuActivity extends AppCompatActivity {
+public class RestaurantMenuActivity extends AppCompatActivity implements OrderItemManager.OnCartUpdateListener {
     private static final String TAG = "RestaurantDetailActivity";
+    private static final int REQUEST_FOOD_DETAIL = 1;
     
     // UI Components
     private Toolbar toolbar;
@@ -51,15 +57,19 @@ public class RestaurantMenuActivity extends AppCompatActivity {
     private CollapsingToolbarLayout collapsingToolbar;
     private RecyclerView menuItemsRecyclerView;
     private ImageView restImageView;
+
+    private TextView restaurantNameTextView;
     private TextView restaurantDescriptionText;
     private TextView addressText;
-    private TextView cuisineText;
     private TextView deliveryFeeText;
     private TextView deliveryTimeText;
     private RatingBar restaurantRating;
     private TextView ratingValueText;
+    private TextView reviewCountText;
     private TabLayout menuTabLayout;
     private Button viewCartButton;
+    private LinearLayout cartButtonLayout;
+    private TextView priceTV;
     
     // Data
     private String restaurantId;
@@ -75,6 +85,8 @@ public class RestaurantMenuActivity extends AppCompatActivity {
     private List<MenuItem> filteredMenuItems;
     private Map<String, List<MenuItem>> menuItemsByCategory;
     private MenuItemAdapter menuItemAdapter;
+
+    private Restaurant currentRestaurant;
     
     // Firebase
     private DatabaseReference databaseReference;
@@ -84,7 +96,7 @@ public class RestaurantMenuActivity extends AppCompatActivity {
     private NumberFormat currencyFormat;
     
     // Add CartManager field
-    private CartManager cartManager;
+    private OrderItemManager orderItemManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,7 +111,8 @@ public class RestaurantMenuActivity extends AppCompatActivity {
         currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
         
         // Initialize CartManager
-        cartManager = CartManager.getInstance(this);
+        orderItemManager = OrderItemManager.getInstance(this);
+        orderItemManager.setOnCartUpdateListener(this); // Register as listener
 
         // Get restaurant ID from intent
         restaurantId = getIntent().getStringExtra("RESTAURANT_ID");
@@ -138,6 +151,9 @@ public class RestaurantMenuActivity extends AppCompatActivity {
         
         // Setup click listeners
         setupClickListeners();
+
+        // Initial update of cart button
+        updateCartButton();
     }
 
     private void initializeViews() {
@@ -148,13 +164,16 @@ public class RestaurantMenuActivity extends AppCompatActivity {
         restImageView = findViewById(R.id.restImageView);
         restaurantDescriptionText = findViewById(R.id.restaurantDescriptionText);
         addressText = findViewById(R.id.addressText);
-        cuisineText = findViewById(R.id.cuisineText);
         deliveryFeeText = findViewById(R.id.deliveryFeeText);
         deliveryTimeText = findViewById(R.id.deliveryTimeText);
         restaurantRating = findViewById(R.id.restaurantRating);
         ratingValueText = findViewById(R.id.ratingValueText);
+        reviewCountText = findViewById(R.id.reviewCountText);
         menuTabLayout = findViewById(R.id.menuTabLayout);
         viewCartButton = findViewById(R.id.viewOrderButton);
+        restaurantNameTextView = findViewById(R.id.restaurantNameTextView);
+        cartButtonLayout = findViewById(R.id.cartButtonLayout);
+        priceTV = findViewById(R.id.priceTV);
     }
     
     private void setupClickListeners() {
@@ -190,7 +209,7 @@ public class RestaurantMenuActivity extends AppCompatActivity {
     }
     
     private void setupMenuItemsRecyclerView() {
-        menuItemAdapter = new MenuItemAdapter(new ArrayList<>());
+        menuItemAdapter = new MenuItemAdapter(this, new ArrayList<>());
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         menuItemsRecyclerView.setLayoutManager(layoutManager);
         menuItemsRecyclerView.setAdapter(menuItemAdapter);
@@ -199,17 +218,74 @@ public class RestaurantMenuActivity extends AppCompatActivity {
         menuItemAdapter.setOnItemClickListener(new MenuItemAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(MenuItem menuItem) {
+                // Check if item is in cart
+                int currentQuantity = 0;
+                for (OrderItem cartItem : orderItemManager.getCartItems()) {
+                    if (cartItem.getItemId().equals(menuItem.getId())) {
+                        currentQuantity = cartItem.getQuantity();
+                        break;
+                    }
+                }
+
                 // Launch FoodDetailActivity when a menu item is clicked
                 Intent intent = new Intent(RestaurantMenuActivity.this, FoodDetailActivity.class);
                 intent.putExtra("FOOD_ID", menuItem.getId());
-                startActivity(intent);
+                intent.putExtra("RESTAURANT_ID", restaurantId);
+                intent.putExtra("RESTAURANT_NAME", restaurantName);
+                intent.putExtra("CURRENT_QUANTITY", currentQuantity);
+                startActivityForResult(intent, REQUEST_FOOD_DETAIL);
             }
-//
+
             @Override
             public void onAddClick(MenuItem menuItem, View view) {
-                Intent intent = new Intent(RestaurantMenuActivity.this, FoodDetailActivity.class);
-                intent.putExtra("FOOD_ID", menuItem.getId());
-                startActivity(intent);
+                // Check if menu item has options
+                if (menuItem.getAvailableOptions() != null && !menuItem.getAvailableOptions().isEmpty()) {
+                    // Show customization dialog if item has options
+                    FoodCustomizationDialog dialog = new FoodCustomizationDialog(RestaurantMenuActivity.this, menuItem, (customizedMenuItem, quantity, options, note, totalPrice) -> {
+                        // Create a cart item with the customized options
+                        OrderItem cartItem = new OrderItem(
+                            customizedMenuItem.getId(),
+                            restaurantId,
+                            customizedMenuItem.getName(),
+                            totalPrice / quantity, // Price per item
+                            quantity,
+                            customizedMenuItem.getCategory(),
+                            options,
+                            customizedMenuItem.getImageUrl()
+                        );
+                        
+                        // Add to cart using OrderItemManager
+                        orderItemManager.addItem(cartItem);
+                    });
+                    dialog.show();
+                } else {
+                    // Check if item is already in cart
+                    OrderItem existingItem = null;
+                    for (OrderItem cartItem : orderItemManager.getCartItems()) {
+                        if (cartItem.getItemId().equals(menuItem.getId())) {
+                            existingItem = cartItem;
+                            break;
+                        }
+                    }
+
+                    if (existingItem != null) {
+                        // Update quantity if item exists
+                        orderItemManager.updateItemQuantity(existingItem, existingItem.getQuantity() + 1);
+                    } else {
+                        // Add new item to cart
+                    OrderItem cartItem = new OrderItem(
+                        menuItem.getId(),
+                        restaurantId,
+                        menuItem.getName(),
+                        menuItem.getPrice(),
+                        1, // Default quantity
+                        menuItem.getCategory(),
+                        new ArrayList<>(), // No options
+                        menuItem.getImageUrl()
+                    );
+                    orderItemManager.addItem(cartItem);
+                    }
+                }
             }
         });
     }
@@ -220,61 +296,18 @@ public class RestaurantMenuActivity extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
                     // Get basic restaurant details
-                    if (dataSnapshot.hasChild("name")) {
-                        restaurantName = dataSnapshot.child("name").getValue(String.class);
-                        collapsingToolbar.setTitle(restaurantName);
-                    }
+                    Restaurant restaurant = dataSnapshot.getValue(Restaurant.class);
+                    currentRestaurant = restaurant;
+                    restaurant.setId(dataSnapshot.getKey());
+
+                    restaurantName = restaurant.getName();
+                    restaurantDescription = restaurant.getDescription();
+                    restaurantAddress = restaurant.getAddress();
+                    restaurantImageUrl = restaurant.getImageUrl();
+                    deliveryFee = restaurant.getDeliveryFee();
                     
-                    if (dataSnapshot.hasChild("description")) {
-                        restaurantDescription = dataSnapshot.child("description").getValue(String.class);
-                    } else {
-                        restaurantDescription = generateDefaultDescription(restaurantName, null);
-                    }
-                    
-                    if (dataSnapshot.hasChild("address")) {
-                        restaurantAddress = dataSnapshot.child("address").getValue(String.class);
-                    } else {
-                        restaurantAddress = "Chưa có thông tin địa chỉ";
-                    }
-                    
-                    // Get restaurant rating
-                    if (dataSnapshot.hasChild("rating")) {
-                        restaurantRatingValue = dataSnapshot.child("rating").getValue(Double.class);
-                    } else {
-                        restaurantRatingValue = 0;
-                    }
-                    
-                    // Get delivery info
-                    if (dataSnapshot.hasChild("delivery_fee")) {
-                        deliveryFee = dataSnapshot.child("delivery_fee").getValue(Double.class);
-                    } else {
-                        deliveryFee = 15000; // Default delivery fee
-                    }
-                    
-                    if (dataSnapshot.hasChild("delivery_time")) {
-                        deliveryTime = dataSnapshot.child("delivery_time").getValue(Integer.class);
-                    } else {
-                        deliveryTime = 30; // Default delivery time (minutes)
-                    }
-                    
-                    // Get cuisine types
-                    if (dataSnapshot.hasChild("cuisines")) {
-                        for (DataSnapshot cuisineSnapshot : dataSnapshot.child("cuisines").getChildren()) {
-                            cuisineTypes.add(cuisineSnapshot.getValue(String.class));
-                        }
-                    }
-                    
-                    // Get image URL
-                    if (dataSnapshot.hasChild("image_url")) {
-                        restaurantImageUrl = dataSnapshot.child("image_url").getValue(String.class);
-                    } else if (dataSnapshot.hasChild("imageUrl")) {
-                        restaurantImageUrl = dataSnapshot.child("imageUrl").getValue(String.class);
-                    } else if (dataSnapshot.hasChild("image")) {
-                        restaurantImageUrl = dataSnapshot.child("image").getValue(String.class);
-                    }
-                    
-                    // Update UI with restaurant details
-                    updateRestaurantUI();
+                    // Load restaurant reviews to calculate rating
+                    loadRestaurantReviews();
                 } else {
                     Toast.makeText(RestaurantMenuActivity.this, "Restaurant not found", Toast.LENGTH_SHORT).show();
                     finish();
@@ -290,28 +323,62 @@ public class RestaurantMenuActivity extends AppCompatActivity {
         });
     }
     
-    private void updateRestaurantUI() {
+    private void loadRestaurantReviews() {
+        databaseReference.child("reviews")
+            .orderByChild("restaurantId")
+            .equalTo(restaurantId)
+            .addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    double totalRating = 0;
+                    int reviewCount = 0;
+                    
+                    for (DataSnapshot reviewSnapshot : snapshot.getChildren()) {
+                        Review review = reviewSnapshot.getValue(Review.class);
+                        if (review != null) {
+                            totalRating += review.getRating();
+                            reviewCount++;
+                        }
+                    }
+                    
+                    // Calculate average rating
+                    if (reviewCount > 0) {
+                        restaurantRatingValue = totalRating / reviewCount;
+                    } else {
+                        restaurantRatingValue = 0;
+                    }
+                    
+                    // Update UI with new rating and review count
+                    updateRestaurantUI(reviewCount);
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    Log.e(TAG, "Error loading restaurant reviews: " + error.getMessage());
+                }
+            });
+    }
+    
+    private void updateRestaurantUI(int reviewCount) {
+        //Set restaurant name
+        restaurantNameTextView.setText(restaurantName);
+
         // Set restaurant description
         restaurantDescriptionText.setText(restaurantDescription);
         
         // Set address
         addressText.setText(restaurantAddress);
         
-        // Set rating
+        // Set rating and review count
         restaurantRating.setRating((float) restaurantRatingValue);
         ratingValueText.setText(String.format("%.1f", restaurantRatingValue));
-        
-        // Set cuisine types
-        if (cuisineTypes != null && !cuisineTypes.isEmpty()) {
-            cuisineText.setText(String.join(", ", cuisineTypes));
-        } else {
-            cuisineText.setText("Chưa phân loại");
-        }
+        reviewCountText.setText(String.format("(%d đánh giá)", reviewCount));
         
         // Set delivery info
         String formattedFee = currencyFormat.format(deliveryFee).replace("₫", "đ");
         deliveryFeeText.setText(formattedFee);
         deliveryTimeText.setText(deliveryTime + " phút");
+        deliveryFeeText.setText(currentRestaurant.getAveragePrice());
         
         // Load restaurant image
         loadRestaurantImage();
@@ -320,11 +387,10 @@ public class RestaurantMenuActivity extends AppCompatActivity {
     private void loadRestaurantImage() {
         // Use the ImageUtils class to load the image
         ImageUtils.loadImage(
-
             restaurantImageUrl, 
             restImageView, 
             R.drawable.bg,
-                R.drawable.logo2
+            R.drawable.logo2
         );
     }
 
@@ -365,12 +431,8 @@ public class RestaurantMenuActivity extends AppCompatActivity {
                     
                     // Get image URL if available
                     String imageUrl = null;
-                    if (snapshot.hasChild("image_url")) {
-                        imageUrl = snapshot.child("image_url").getValue(String.class);
-                    } else if (snapshot.hasChild("imageUrl")) {
+                    if (snapshot.hasChild("imageUrl")) {
                         imageUrl = snapshot.child("imageUrl").getValue(String.class);
-                    } else if (snapshot.hasChild("image")) {
-                        imageUrl = snapshot.child("image").getValue(String.class);
                     }
 
                     int sales= 0;
@@ -449,148 +511,43 @@ public class RestaurantMenuActivity extends AppCompatActivity {
         }
     }
 
-    // Method to show quantity picker dialog at the position of the clicked view
-    public void showQuantityPickerDialog(MenuItem menuItem, View anchorView) {
-        // Create dialog with custom style
-        Dialog dialog = new Dialog(this, R.style.CustomDialog);
-        dialog.setContentView(R.layout.dialog_quantity_picker);
-        
-        // Find views in dialog
-        ImageButton decreaseBtn = dialog.findViewById(R.id.decreaseButtonDialog);
-        ImageButton increaseBtn = dialog.findViewById(R.id.increaseButtonDialog);
-        TextView quantityTv = dialog.findViewById(R.id.quantityTextViewDialog);
-        Button cancelBtn = dialog.findViewById(R.id.cancelButton);
-        Button confirmBtn = dialog.findViewById(R.id.confirmButton);
-        TextView dialogTitleTv = dialog.findViewById(R.id.dialogTitleTextView);
-        
-        // Set dialog title to include menu item name
-        dialogTitleTv.setText("Số lượng: " + menuItem.getName());
-        
-        // Set initial quantity to 1
-        int quantity = 1;
-        quantityTv.setText(String.valueOf(quantity));
-        
-        // Decrease button
-        decreaseBtn.setOnClickListener(v -> {
-            int currentQty = Integer.parseInt(quantityTv.getText().toString());
-            if (currentQty > 1) {
-                quantityTv.setText(String.valueOf(currentQty - 1));
-            }
-        });
-        
-        // Increase button
-        increaseBtn.setOnClickListener(v -> {
-            int currentQty = Integer.parseInt(quantityTv.getText().toString());
-            quantityTv.setText(String.valueOf(currentQty + 1));
-        });
-        
-        // Make the quantity text clickable to manually enter quantity
-        quantityTv.setOnClickListener(v -> {
-            // Create an AlertDialog with an EditText for manual entry
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Nhập số lượng");
-            
-            // Set up the input
-            final android.widget.EditText input = new android.widget.EditText(this);
-            input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-            input.setText(quantityTv.getText().toString());
-            builder.setView(input);
-            
-            // Set up the buttons
-            builder.setPositiveButton("OK", (dialogInterface, i) -> {
-                String inputText = input.getText().toString();
-                if (!inputText.isEmpty()) {
-                    int inputQty = Integer.parseInt(inputText);
-                    // Ensure minimum quantity is 1
-                    if (inputQty < 1) inputQty = 1;
-                    quantityTv.setText(String.valueOf(inputQty));
-                }
-            });
-            builder.setNegativeButton("Hủy", (dialogInterface, i) -> dialogInterface.cancel());
-            
-            builder.show();
-        });
-        
-        // Cancel button
-        cancelBtn.setOnClickListener(v -> {
-            dialog.dismiss();
-        });
-        
-        // Confirm button
-        confirmBtn.setOnClickListener(v -> {
-            // Get the quantity from dialog
-            int selectedQuantity = Integer.parseInt(quantityTv.getText().toString());
-            
-            // Add to cart
-            addToCart(menuItem, selectedQuantity);
-            
-            dialog.dismiss();
-        });
-        
-        // Show dialog
-        dialog.show();
-        
-        // Position dialog near the anchor view if provided
-        if (anchorView != null) {
-            android.view.Window window = dialog.getWindow();
-            if (window != null) {
-                // Get screen dimensions
-                android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
-                getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-                int screenWidth = displayMetrics.widthPixels;
-                int screenHeight = displayMetrics.heightPixels;
-                
-                // Get location of anchor view on screen
-                int[] location = new int[2];
-                anchorView.getLocationOnScreen(location);
-                
-                // Get dialog dimensions
-                int dialogWidth = window.getDecorView().getWidth();
-                int dialogHeight = window.getDecorView().getHeight();
-                
-                // If dialog width/height is zero (not yet measured), use estimated values
-                if (dialogWidth == 0) dialogWidth = (int)(screenWidth * 0.8);
-                if (dialogHeight == 0) dialogHeight = 400; // Estimated height
-                
-                // Calculate position
-                int x = location[0] + (anchorView.getWidth() / 2) - (dialogWidth / 2);
-                int y = location[1] - dialogHeight;
-                
-                // Ensure dialog stays within screen bounds
-                if (x < 0) x = 0;
-                if (x + dialogWidth > screenWidth) x = screenWidth - dialogWidth;
-                if (y < 0) y = 0;
-                
-                // Set position
-                android.view.WindowManager.LayoutParams params = window.getAttributes();
-                params.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
-                params.x = x;
-                params.y = y;
-                
-                window.setAttributes(params);
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_FOOD_DETAIL && resultCode == RESULT_OK && data != null) {
+            // Refresh the menu items list if needed
+            String returnedRestaurantId = data.getStringExtra("RESTAURANT_ID");
+            if (returnedRestaurantId != null && returnedRestaurantId.equals(restaurantId)) {
+                // We no longer call updateCartButton here directly as it's handled by the listener
+                // updateCartButton(); 
             }
         }
     }
-    
-    // Method to add a menu item to the cart
-    private void addToCart(MenuItem menuItem, int quantity) {
-        // Create a cart item
-        OrderItem cartItem = new OrderItem(
-            menuItem.getId(),
-            restaurantId,
-            menuItem.getName(),
-            menuItem.getPrice(),
-            quantity,
-            menuItem.getCategory(),
-            new ArrayList<Option>(),  // No toppings when adding directly from restaurant menu
-            menuItem.getImageUrl()
-        );
-        
-        // Add to cart using CartManager
-        cartManager.addItem(cartItem);
-        
-        // Show success message
-        Toast.makeText(this, quantity + " × " + menuItem.getName() + " đã được thêm vào giỏ hàng", Toast.LENGTH_SHORT).show();
+
+    private void updateCartButton() {
+        Log.d(TAG, "updateCartButton: Called");
+        Log.d(TAG, "updateCartButton: Restaurant ID: " + restaurantId);
+
+        // Check if there are items from this restaurant in the cart
+        List<OrderItem> restaurantItems = orderItemManager.getRestaurantItems(restaurantId);
+        if (!restaurantItems.isEmpty()) {
+            Log.d(TAG, "updateCartButton: Restaurant items found, size: " + restaurantItems.size());
+            cartButtonLayout.setVisibility(View.VISIBLE);
+            Log.d(TAG, "updateCartButton: Setting cartButtonLayout to VISIBLE");
+            double total = orderItemManager.getRestaurantTotal(restaurantId);
+            String formattedTotal = currencyFormat.format(total).replace("₫", "đ");
+            priceTV.setText(formattedTotal);
+        } else {
+            Log.d(TAG, "updateCartButton: No restaurant items found");
+            cartButtonLayout.setVisibility(View.GONE);
+            Log.d(TAG, "updateCartButton: Setting cartButtonLayout to GONE");
+        }
+    }
+
+    @Override
+    public void onCartUpdated(List<OrderItem> cartItems, double total) {
+        // This callback is triggered whenever the cart is updated in OrderItemManager
+        updateCartButton();
     }
 
     @Override

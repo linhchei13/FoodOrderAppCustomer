@@ -9,7 +9,6 @@ import android.widget.FrameLayout;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -18,14 +17,14 @@ import androidx.fragment.app.Fragment;
 import com.example.foodorderappcustomer.Fragment.AccountFragment;
 import com.example.foodorderappcustomer.Fragment.HomeFragment;
 import com.example.foodorderappcustomer.Fragment.HistoryFragment;
-import com.example.foodorderappcustomer.util.CartManager;
+import com.example.foodorderappcustomer.util.OrderItemManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
 
     FrameLayout frameLayout;
     BottomNavigationView bottomNavigationView;
-    private CartManager cartManager;
+    private OrderItemManager orderItemManager;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         // Initialize CartManager
-        cartManager = CartManager.getInstance(this);
+        orderItemManager = OrderItemManager.getInstance(this);
 
         bottomNavigationView = findViewById(R.id.bottomNav);
         frameLayout = findViewById(R.id.fragment_container);
@@ -85,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.menu_cart) {
             // Open cart activity
-            Intent intent = new Intent(this, CartActivity.class);
+            Intent intent = new Intent(this, ShowCartActivity.class);
             startActivity(intent);
             return true;
         }
@@ -95,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
     private void updateCartBadge(Menu menu) {
         MenuItem cartItem = menu.findItem(R.id.menu_cart);
         if (cartItem != null) {
-            int itemCount = cartManager.getItemCount();
+            int itemCount = orderItemManager.getItemCount();
             if (itemCount > 0) {
                 cartItem.setTitle("Giỏ hàng (" + itemCount + ")");
             } else {

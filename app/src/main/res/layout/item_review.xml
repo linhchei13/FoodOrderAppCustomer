@@ -3,7 +3,7 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="8dp"
-    android:background="#ffeeee">
+    android:background="@color/white">
     <!--    android:background="@android:color/white">-->
 
     <!-- Avatar + Tên người dùng + Rating -->
@@ -40,13 +40,13 @@
                 android:id="@+id/ratingBar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:numStars="5"
-                android:stepSize="1"
+                android:layout_marginTop="2dp"
                 android:isIndicator="true"
+                android:numStars="5"
                 android:scaleX="0.7"
                 android:scaleY="0.7"
-                android:theme="@style/CustomRatingBar"
-                android:layout_marginTop="2dp" />
+                android:stepSize="1"
+                android:theme="@style/CustomRatingBar" />
         </LinearLayout>
     </LinearLayout>
 
@@ -90,8 +90,6 @@
         android:visibility="gone" />
 
 
-
-
     <!-- Nút phản hồi -->
     <Button
         android:id="@+id/btnReply"
@@ -99,7 +97,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="end"
         android:layout_marginTop="6dp"
-        android:backgroundTint="#FFA726"
         android:text="Thêm phản hồi"
         android:textAllCaps="false"
         android:textColor="#FFFFFF" />

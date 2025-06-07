@@ -4,18 +4,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -23,6 +20,10 @@ import com.example.foodorderappcustomer.Adapter.CategoryAdapter;
 import com.example.foodorderappcustomer.Adapter.PromotionAdapter;
 import com.example.foodorderappcustomer.Adapter.RestaurantAdapter;
 import com.example.foodorderappcustomer.CartActivity;
+import com.example.foodorderappcustomer.Models.MenuItem;
+import com.example.foodorderappcustomer.Models.Review;
+import com.example.foodorderappcustomer.SavedAddressesActivity;
+import com.example.foodorderappcustomer.ShowCartActivity;
 import com.example.foodorderappcustomer.LocationActivity;
 import com.example.foodorderappcustomer.Models.Category;
 import com.example.foodorderappcustomer.Models.Promotion;
@@ -38,21 +39,17 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 import android.app.Activity;
-import static android.app.Activity.RESULT_OK;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+
+import com.example.foodorderappcustomer.util.OrderItemManager;
 
 public class HomeFragment extends Fragment implements PromotionAdapter.OnPromotionClickListener {
 
@@ -67,6 +64,8 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
     private List<Restaurant> nearbyRestaurantList;
     private List<Restaurant> filteredRestaurantList;
     private List<Promotion> promotionList;
+
+    List<MenuItem> menuItems = new ArrayList<>();
     private FloatingActionButton floatingActionButton;
     private TextView searchEditText;
     private TextView welcomeTextView;
@@ -76,8 +75,9 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
     private DatabaseReference databaseReference;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
 
-    private static final int LOCATION_REQUEST_CODE = 1001;
     private ActivityResultLauncher<Intent> locationActivityLauncher;
+
+    private OrderItemManager orderItemManager;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -88,6 +88,9 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         // Initialize Firebase
         firebaseAuth = FirebaseAuth.getInstance();
         databaseReference = FirebaseDatabase.getInstance().getReference();
+        
+        // Initialize OrderItemManager
+        orderItemManager = OrderItemManager.getInstance(requireContext());
 
         // Initialize views
         categoryRecyclerView = view.findViewById(R.id.categoryView);
@@ -121,6 +124,9 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         loadRestaurants();
         loadPromotions();
 
+        // Update cart button visibility
+        updateCartButton();
+
         // Initialize location activity launcher
         locationActivityLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -132,7 +138,7 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
                         addressTextView.setText(selectedAddress);
                         
                         // Store the address in SharedPreferences
-                        SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+                        SharedPreferences prefs = getActivity().getSharedPreferences(firebaseAuth.getUid(), Context.MODE_PRIVATE);
                         prefs.edit()
                             .putString("current_address", selectedAddress)
                             .putBoolean("has_selected_address", true)
@@ -147,9 +153,11 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
 
     private void setupClickListeners() {
         floatingActionButton.setOnClickListener(v -> {
-            // Handle floating action button click
-            Toast.makeText(getContext(), "Floating action button clicked", Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(getContext(), CartActivity.class));
+            if (!orderItemManager.isEmpty()) {
+                startActivity(new Intent(getContext(), CartActivity.class));
+            } else {
+                Toast.makeText(getContext(), "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
+            }
         });
         searchEditText.setOnClickListener(v -> {
             startActivity(new Intent(getContext(), SearchActivity.class));
@@ -158,6 +166,11 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
             Intent intent = new Intent(getContext(), LocationActivity.class);
             locationActivityLauncher.launch(intent);
         });
+//        addressTextView.setOnClickListener(v -> {
+//            Intent intent = new Intent(getContext(), SavedAddressesActivity.class);
+//            startActivity(intent);
+//                }
+//                );
     }
 
     private void setupCategoryRecyclerView() {
@@ -181,37 +194,11 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         promotionsRecyclerView.setAdapter(promotionAdapter);
     }
 
-    private void setupSearch() {
-
-    }
-
-    private void setupLocation() {
-
-    }
-
-    private void filterRestaurants(String query) {
-        filteredRestaurantList.clear();
-
-        if (query.isEmpty()) {
-            filteredRestaurantList.addAll(restaurantList);
-        } else {
-            String lowerCaseQuery = query.toLowerCase();
-            for (Restaurant restaurant : restaurantList) {
-                if (restaurant.getName().toLowerCase().contains(lowerCaseQuery) ||
-                        (restaurant.getAddress() != null && restaurant.getAddress().toLowerCase().contains(lowerCaseQuery))) {
-                    filteredRestaurantList.add(restaurant);
-                }
-            }
-        }
-
-        restaurantAdapter.updateData(filteredRestaurantList);
-    }
-
     private void loadUserData() {
         FirebaseUser currentUser = firebaseAuth.getCurrentUser();
         if (currentUser != null) {
             // First check if user has manually selected an address
-            SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+            SharedPreferences prefs = getActivity().getSharedPreferences(firebaseAuth.getUid(), Context.MODE_PRIVATE);
             boolean hasSelectedAddress = prefs.getBoolean("has_selected_address", false);
             String currentAddress = prefs.getString("current_address", null);
 
@@ -277,34 +264,30 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
     }
 
     private void loadCategories() {
-        // Clear existing categories
-        categoryList.clear();
+        databaseReference.child("categories").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                categoryList.clear();
+                for (DataSnapshot categorySnapshot : snapshot.getChildren()) {
+                    String id = categorySnapshot.child("id").getValue(String.class);
+                    String name = categorySnapshot.child("name").getValue(String.class);
+                    String url = categorySnapshot.child("imageUrl").getValue(String.class);
+                    String description = categorySnapshot.child("description").getValue(String.class);
 
-        // Add predefined categories
-        Category cafeTraSua = new Category("1", "Cà phê, Trà sữa", "Các loại cà phê và trà sữa");
-        cafeTraSua.setImageResource(R.drawable.icons_drink);
+                    Category category = new Category(id, name, description, url);
+                    categoryList.add(category);
+                }
+                // Notify adapter of data change
+                if (categoryAdapter != null) {
+                    categoryAdapter.notifyDataSetChanged();
+                }
+            }
 
-        Category com = new Category("2", "Cơm", "Các món cơm");
-        com.setImageResource(R.drawable.icons_rice);
-
-        Category bunPho = new Category("3", "Bún, Phở", "Các món bún và phở");
-        bunPho.setImageResource(R.drawable.icons_pho);
-
-        Category anVat = new Category("4", "Ăn vặt", "Các món ăn vặt");
-        anVat.setImageResource(R.drawable.icons_pizza);
-
-        Category trangMieng = new Category("5", "Tráng miệng", "Các món tráng miệng");
-        trangMieng.setImageResource(R.drawable.icons_dessert);
-
-        // Add categories to the list
-        categoryList.add(cafeTraSua);
-        categoryList.add(com);
-        categoryList.add(bunPho);
-        categoryList.add(anVat);
-        categoryList.add(trangMieng);
-
-        // Update adapter
-        categoryAdapter.updateData(categoryList);
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e("CategoryFragment", "Error loading categories", error.toException());
+            }
+        });
     }
 
     private void loadRestaurants() {
@@ -316,80 +299,17 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
 
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     String id = snapshot.getKey();
-                    String name = snapshot.child("name").getValue(String.class);
-                    String description = snapshot.child("description").getValue(String.class);
+                    Log.d("RestaurantFragment", "Loaded restaurant ID: " + snapshot);
+                    loadRestaurantReviews(id);
+                    loadItems(id);
 
-                    // Get address
-                    String address = "";
-                    if (snapshot.hasChild("address")) {
-                        DataSnapshot addressSnapshot = snapshot.child("address");
-                        String street = addressSnapshot.child("street").getValue(String.class);
-                        String city = addressSnapshot.child("city").getValue(String.class);
-                        String state = addressSnapshot.child("state").getValue(String.class);
+                    Restaurant restaurant = snapshot.getValue(Restaurant.class);
+                    restaurant.setId(snapshot.getKey());
 
-                        if (street != null && city != null) {
-                            address = street + ", " + city;
-                            if (state != null) {
-                                address += ", " + state;
-                            }
-                        } else {
-                            address = addressSnapshot.getValue(String.class);
-                        }
-                    }
-
-                    // Get rating
-                    double rating = 0.0;
-                    if (snapshot.hasChild("rating")) {
-                        Double ratingValue = snapshot.child("rating").getValue(Double.class);
-                        if (ratingValue != null) {
-                            rating = ratingValue;
-                        }
-                    }
-
-                    // Get delivery fee
-                    double deliveryFee = 0.0;
-                    if (snapshot.hasChild("deliveryFee")) {
-                        Double deliveryFeeValue = snapshot.child("deliveryFee").getValue(Double.class);
-                        if (deliveryFeeValue != null) {
-                            deliveryFee = deliveryFeeValue;
-                        }
-                    }
-
-                    // Get delivery time
-                    int deliveryTime = 0;
-                    if (snapshot.hasChild("averageDeliveryTime")) {
-                        Integer deliveryTimeValue = snapshot.child("averageDeliveryTime").getValue(Integer.class);
-                        if (deliveryTimeValue != null) {
-                            deliveryTime = deliveryTimeValue;
-                        }
-                    }
-
-                    // Create a Restaurant object with default image resource
-                    Restaurant restaurant = new Restaurant(id, name, description, address, rating);
-                    restaurant.setDeliveryFee(deliveryFee);
-                    restaurant.setAverageDeliveryTime(deliveryTime);
-
-                    // Set a default image resource
-                    // This is a temporary solution until you implement image loading from URLs
-                    if (snapshot.hasChild("imageUrl")) {
-                        String imageUrl = snapshot.child("imageUrl").getValue(String.class);
-                        restaurant.setImageUrl(imageUrl);
-                    } else {
-                        restaurant.setImageResource(R.drawable.logo2);
-                    }
                     restaurantList.add(restaurant);
-
-                    // For demo purposes, we'll consider the first 5 restaurants as "nearby"
-                    if (nearbyRestaurantList.size() < 5) {
-                        nearbyRestaurantList.add(restaurant);
-                    }
                 }
 
-                // Also update the filtered list
-                filteredRestaurantList.clear();
-                filteredRestaurantList.addAll(restaurantList);
-
-                restaurantAdapter.updateData(filteredRestaurantList);
+                restaurantAdapter.updateData(restaurantList);
             }
 
             @Override
@@ -399,6 +319,71 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         });
     }
 
+    private void loadItems(String restaurantId) {
+
+        databaseReference.child("menuItems").orderByChild("restaurantId").equalTo(restaurantId)
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        int aveprice = 0;
+                        double total = 0;
+                        int count = 0;
+                        for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                            MenuItem  menuItem = snapshot.getValue(MenuItem.class);
+                            if (menuItem != null) {
+                                total += menuItem.getPrice();
+                                count++;
+                            }
+                        }
+                        aveprice = (int) Math.ceil(total/count) / 1000;
+                        String price = String.valueOf(aveprice);
+                        databaseReference.child("restaurants").child(restaurantId)
+                                .child("averagePrice").setValue(price);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Log.e("Load menu", "Failed to load menu items: " + error.getMessage());
+                    }
+                });
+    }
+
+
+    private void loadRestaurantReviews(String restaurantId) {
+        databaseReference.child("reviews")
+                .orderByChild("restaurantId")
+                .equalTo(restaurantId)
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        double totalRating = 0;
+                        int reviewCount = 0;
+
+                        for (DataSnapshot reviewSnapshot : snapshot.getChildren()) {
+                            Review review = reviewSnapshot.getValue(Review.class);
+                            if (review != null) {
+                                totalRating += review.getRating();
+                                reviewCount++;
+                            }
+                        }
+                        double restaurantRatingValue;
+
+                        // Calculate average rating
+                        if (reviewCount > 0) {
+                            restaurantRatingValue = totalRating / reviewCount;
+                        } else {
+                            restaurantRatingValue = 0;
+                        }
+                        databaseReference.child("restaurants").child(restaurantId).child("rating").setValue(restaurantRatingValue);
+                        databaseReference.child("restaurants").child(restaurantId).child("totalRatings").setValue(reviewCount);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+
+                    }
+                });
+    }
     private void loadPromotions() {
         databaseReference.child("promotions").addValueEventListener(new ValueEventListener() {
             @Override
@@ -441,6 +426,14 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         });
     }
 
+    private void updateCartButton() {
+        if (orderItemManager != null && !orderItemManager.isEmpty()) {
+            floatingActionButton.setVisibility(View.VISIBLE);
+        } else {
+            floatingActionButton.setVisibility(View.GONE);
+        }
+    }
+
     @Override
     public void onPromotionClick(Promotion promotion) {
         // Handle promotion click
@@ -456,5 +449,7 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         loadCategories();
         loadRestaurants();
         loadPromotions();
+        // Update cart button visibility when returning to this fragment
+        updateCartButton();
     }
 }
