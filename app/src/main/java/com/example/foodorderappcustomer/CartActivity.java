@@ -278,10 +278,6 @@ public class CartActivity extends AppCompatActivity implements CartItemAdapter.O
     @Override
     public void onRestaurantClicked(String restaurantId) {
         if (!isManageMode) {
-            // In normal mode, navigate to restaurant detail or checkout
-            Toast.makeText(this, "Chuyển đến thanh toán cho nhà hàng: " + restaurantId, Toast.LENGTH_SHORT).show();
-
-            // Example navigation to checkout
             Intent intent = new Intent(this, CheckOutActivity.class);
             intent.putExtra("RESTAURANT_ID", restaurantId);
             startActivity(intent);

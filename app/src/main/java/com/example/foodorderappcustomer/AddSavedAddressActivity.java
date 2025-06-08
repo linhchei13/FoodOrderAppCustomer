@@ -15,6 +15,7 @@ import android.os.Looper;
 import android.text.TextWatcher;
 import android.text.Editable;
 import android.util.Log;
+import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -45,6 +46,8 @@ public class AddSavedAddressActivity extends AppCompatActivity {
     private String userId;
     private String placeId; // This will now be updated by autocomplete selection
     private String selectedAddress; // This will now be updated by autocomplete selection
+    private String addressId; // Add this field
+    private boolean isEditing = false; // Add this field
 
     private ActivityResultLauncher<Intent> locationPickerLauncher;
 
@@ -65,10 +68,26 @@ public class AddSavedAddressActivity extends AppCompatActivity {
     private double biasLong = 105.8542; // Default to Hanoi
     private static final int RADIUS = 200; // 200km radius around
 
+    private boolean isSelectingAddress = false; // Add this flag
+    private TextWatcher addressTextWatcher; // Add this field
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_saved_address);
+
+        // Initialize Firebase first
+        userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        savedAddressRef = FirebaseDatabase.getInstance().getReference()
+                .child("users")
+                .child(userId)
+                .child("saved_addresses");
+
+        // Initialize views before using them
+        initViews();
+        initApi();
+        setupListeners();
+        setupAutocomplete();
 
         // Initialize the launcher for re-selecting address from LocationActivity
         locationPickerLauncher = registerForActivityResult(
@@ -93,17 +112,24 @@ public class AddSavedAddressActivity extends AppCompatActivity {
         biasLat = getIntent().getDoubleExtra("bias_lat", biasLat);
         biasLong = getIntent().getDoubleExtra("bias_long", biasLong);
 
-        // Initialize Firebase
-        userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        savedAddressRef = FirebaseDatabase.getInstance().getReference()
-                .child("users")
-                .child(userId)
-                .child("saved_addresses");
+        // Get data from intent for edit mode
+        isEditing = getIntent().getBooleanExtra("is_editing", false);
+        if (isEditing) {
+            addressId = getIntent().getStringExtra("address_id");
+            String label = getIntent().getStringExtra("address_label");
+            String address = getIntent().getStringExtra("address_text");
+            placeId = getIntent().getStringExtra("place_id");
+            selectedAddress = address;
 
-        initViews();
-        initApi();
-        setupListeners();
-        setupAutocomplete();
+            // Update UI for edit mode
+            Button saveButton = findViewById(R.id.saveButton);
+            saveButton.setText("Cập nhật địa chỉ");
+
+            // Pre-fill the fields
+            labelEditText.setText(label);
+            addressEditText.setText(address);
+            addressEditText.setEnabled(false); // Disable address editing
+        }
     }
 
     private void initViews() {
@@ -138,6 +164,8 @@ public class AddSavedAddressActivity extends AppCompatActivity {
         clearButton.setOnClickListener(v -> {
             addressEditText.setEnabled(true);
             addressEditText.setText("");
+            isSelectingAddress = false; // Reset flag when clearing
+            suggestionsListView.setVisibility(View.GONE);
         });
 
         // Listener for re-selecting address using LocationActivity
@@ -162,55 +190,26 @@ public class AddSavedAddressActivity extends AppCompatActivity {
                 return;
             }
 
-            // Check if user already has 5 saved addresses
-            savedAddressRef.get().addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    long addressCount = task.getResult().getChildrenCount();
-                    if (addressCount >= 5) {
-                        Toast.makeText(AddSavedAddressActivity.this, 
-                            "Bạn đã đạt giới hạn 5 địa chỉ đã lưu", 
-                            Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    // Create new saved address
-                    String addressId = savedAddressRef.push().getKey();
-                    SavedAddress savedAddress = new SavedAddress(
-                        addressId,
-                        label,
-                        address,
-                        placeId // Use the updated placeId from autocomplete or direct selection
-                    );
-
-                    // Save to Firebase
-                    savedAddressRef.child(addressId).setValue(savedAddress)
-                        .addOnSuccessListener(aVoid -> {
-                            Toast.makeText(AddSavedAddressActivity.this, 
-                                "Đã lưu địa chỉ thành công", 
-                                Toast.LENGTH_SHORT).show();
-                            finish();
-                        })
-                        .addOnFailureListener(e -> {
-                            Toast.makeText(AddSavedAddressActivity.this, 
-                                "Lỗi khi lưu địa chỉ: " + e.getMessage(), 
-                                Toast.LENGTH_SHORT).show();
-                        });
-                } else {
-                    Toast.makeText(AddSavedAddressActivity.this, 
-                        "Lỗi khi kiểm tra địa chỉ đã lưu: " + task.getException().getMessage(), 
-                        Toast.LENGTH_SHORT).show();
-                }
-            });
+            if (isEditing) {
+                updateAddress(label, address);
+            } else {
+                saveNewAddress(label, address);
+            }
         });
     }
 
     private void setupAutocomplete() {
-        addressEditText.addTextChangedListener(new TextWatcher() {
+        // Create TextWatcher
+        addressTextWatcher = new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (isSelectingAddress) {
+                    return; // Skip if we're in the process of selecting an address
+                }
+
                 if (searchRunnable != null) {
                     searchHandler.removeCallbacks(searchRunnable);
                 }
@@ -228,17 +227,27 @@ public class AddSavedAddressActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {}
-        });
+        };
+
+        // Add TextWatcher to EditText
+        addressEditText.addTextChangedListener(addressTextWatcher);
 
         suggestionsListView.setOnItemClickListener((parent, view, position, id) -> {
             if (position < predictions.size()) {
+                isSelectingAddress = true; // Set flag before changing text
+                
                 PlaceResponse.Predictions selectedPrediction = predictions.get(position);
                 selectedAddress = searchResults.get(position);
                 placeId = selectedPrediction.getPlaceId();
 
-                addressEditText.setText(selectedAddress); // Set selected address to EditText
+                addressEditText.setText(selectedAddress);
                 suggestionsListView.setVisibility(View.GONE);
-                addressEditText.setEnabled(false);// Hide suggestions
+                addressEditText.setEnabled(false);
+
+                // Reset flag after a short delay to ensure the text change event is processed
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    isSelectingAddress = false;
+                }, 100);
             }
         });
     }
@@ -309,11 +318,84 @@ public class AddSavedAddressActivity extends AppCompatActivity {
         });
     }
 
+    private void saveNewAddress(String label, String address) {
+        // Check if user already has 5 saved addresses
+        savedAddressRef.get().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                long addressCount = task.getResult().getChildrenCount();
+                if (addressCount >= 5) {
+                    Toast.makeText(AddSavedAddressActivity.this, 
+                        "Bạn đã đạt giới hạn 5 địa chỉ đã lưu", 
+                        Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                // Create new saved address
+                String newAddressId = savedAddressRef.push().getKey();
+                SavedAddress savedAddress = new SavedAddress(
+                    newAddressId,
+                    label,
+                    address,
+                    placeId
+                );
+
+                // Save to Firebase
+                savedAddressRef.child(newAddressId).setValue(savedAddress)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(AddSavedAddressActivity.this, 
+                            "Đã lưu địa chỉ thành công", 
+                            Toast.LENGTH_SHORT).show();
+                        finish();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(AddSavedAddressActivity.this, 
+                            "Lỗi khi lưu địa chỉ: " + e.getMessage(), 
+                            Toast.LENGTH_SHORT).show();
+                    });
+            } else {
+                Toast.makeText(AddSavedAddressActivity.this, 
+                    "Lỗi khi kiểm tra địa chỉ đã lưu: " + task.getException().getMessage(), 
+                    Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void updateAddress(String label, String address) {
+        if (addressId == null) {
+            Toast.makeText(this, "Lỗi: Không tìm thấy địa chỉ cần cập nhật", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        SavedAddress updatedAddress = new SavedAddress(
+            addressId,
+            label,
+            address,
+            placeId
+        );
+
+        savedAddressRef.child(addressId).setValue(updatedAddress)
+            .addOnSuccessListener(aVoid -> {
+                Toast.makeText(AddSavedAddressActivity.this, 
+                    "Đã cập nhật địa chỉ thành công", 
+                    Toast.LENGTH_SHORT).show();
+                finish();
+            })
+            .addOnFailureListener(e -> {
+                Toast.makeText(AddSavedAddressActivity.this, 
+                    "Lỗi khi cập nhật địa chỉ: " + e.getMessage(), 
+                    Toast.LENGTH_SHORT).show();
+            });
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         if (searchRunnable != null) {
             searchHandler.removeCallbacks(searchRunnable);
+        }
+        // Remove TextWatcher to prevent memory leaks
+        if (addressTextWatcher != null) {
+            addressEditText.removeTextChangedListener(addressTextWatcher);
         }
     }
 } 

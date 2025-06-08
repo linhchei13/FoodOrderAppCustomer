@@ -33,6 +33,7 @@ public class LoginActivity extends AppCompatActivity {
     private Button loginButton;
     private TextView loginRedirectText;
     private TextView forgotPasswordText;
+    private TextView loginErrorText;
     private ProgressDialog progressDialog;
 
     @Override
@@ -54,6 +55,8 @@ public class LoginActivity extends AppCompatActivity {
         loginPassword = findViewById(R.id.login_password);
         loginButton = findViewById(R.id.login_button);
         loginRedirectText = findViewById(R.id.loginRedirectText);
+        loginErrorText = findViewById(R.id.login_error_text);
+        forgotPasswordText = findViewById(R.id.forgotPasswordText);
 
         // Initialize progress dialog
         progressDialog = new ProgressDialog(this);
@@ -63,6 +66,8 @@ public class LoginActivity extends AppCompatActivity {
         loginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // Clear any previous error messages
+                loginErrorText.setVisibility(View.GONE);
                 String email = loginEmail.getText().toString().trim();
                 String password = loginPassword.getText().toString().trim();
 
@@ -80,22 +85,19 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-        // Add forgot password functionality if needed
-//        if (findViewById(R.id.forgotPasswordText) != null) {
-//            forgotPasswordText = findViewById(R.id.forgotPasswordText);
-//            forgotPasswordText.setOnClickListener(new View.OnClickListener() {
-//                @Override
-//                public void onClick(View v) {
-//                    // Handle forgot password
-//                    String email = loginEmail.getText().toString().trim();
-//                    if (email.isEmpty()) {
-//                        loginEmail.setError("Vui lòng nhập email để đặt lại mật khẩu");
-//                    } else {
-//                        resetPassword(email);
-//                    }
-//                }
-//            });
-//        }
+        // Add forgot password functionality
+        forgotPasswordText.setOnClickListener(v -> {
+            String email = loginEmail.getText().toString().trim();
+            if (email.isEmpty()) {
+                loginEmail.setError("Vui lòng nhập email để đặt lại mật khẩu");
+                loginEmail.requestFocus();
+            } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                loginEmail.setError("Email không hợp lệ");
+                loginEmail.requestFocus();
+            } else {
+                showResetPasswordDialog(email);
+            }
+        });
     }
 
     private boolean validateInputs(String email, String password) {
@@ -137,10 +139,42 @@ public class LoginActivity extends AppCompatActivity {
                             // If sign in fails, display a message to the user
                             Log.w(TAG, "signInWithEmail:failure", task.getException());
                             String errorMessage = task.getException() != null ? task.getException().getMessage() : "Đăng nhập thất bại";
-                            Toast.makeText(LoginActivity.this, "Đăng nhập thất bại: " + errorMessage, Toast.LENGTH_SHORT).show();
+                            
+                            // Show error in TextView
+                            loginErrorText.setText("Sai email hoặc mật khẩu. Vui lòng kiểm tra lại");
+                            loginErrorText.setVisibility(View.VISIBLE);
+                            
                         }
                     }
                 });
+    }
+
+    private String getErrorMessage(String firebaseError) {
+        if (firebaseError.contains("password is invalid") || firebaseError.contains("no user record")) {
+            return "Email hoặc mật khẩu không đúng";
+        } else if (firebaseError.contains("badly formatted")) {
+            return "Email không đúng định dạng";
+        } else if (firebaseError.contains("network")) {
+            return "Lỗi kết nối mạng. Vui lòng kiểm tra lại kết nối";
+        } else {
+            return "Đăng nhập thất bại. Vui lòng thử lại";
+        }
+    }
+
+    private void showResetPasswordDialog(String email) {
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+        builder.setTitle("Đặt lại mật khẩu");
+        builder.setMessage("Bạn có muốn gửi email đặt lại mật khẩu đến " + email + " không?");
+        
+        builder.setPositiveButton("Gửi", (dialog, which) -> {
+            resetPassword(email);
+            dialog.dismiss();
+        });
+        
+        builder.setNegativeButton("Hủy", (dialog, which) -> dialog.dismiss());
+        
+        androidx.appcompat.app.AlertDialog dialog = builder.create();
+        dialog.show();
     }
 
     private void resetPassword(String email) {
@@ -148,18 +182,38 @@ public class LoginActivity extends AppCompatActivity {
         progressDialog.show();
 
         auth.sendPasswordResetEmail(email)
-                .addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        progressDialog.dismiss();
-                        if (task.isSuccessful()) {
-                            Toast.makeText(LoginActivity.this, "Email đặt lại mật khẩu đã được gửi", Toast.LENGTH_SHORT).show();
-                        } else {
-                            String errorMessage = task.getException() != null ? task.getException().getMessage() : "Không thể gửi email đặt lại mật khẩu";
-                            Toast.makeText(LoginActivity.this, "Lỗi: " + errorMessage, Toast.LENGTH_SHORT).show();
-                        }
+                .addOnCompleteListener(task -> {
+                    progressDialog.dismiss();
+                    if (task.isSuccessful()) {
+                        // Show success dialog
+                        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(LoginActivity.this);
+                        builder.setTitle("Thành công");
+                        builder.setMessage("Email đặt lại mật khẩu đã được gửi đến " + email + ". Vui lòng kiểm tra hộp thư của bạn.");
+                        builder.setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
+                        builder.show();
+                    } else {
+                        String errorMessage = task.getException() != null ? task.getException().getMessage() : "Không thể gửi email đặt lại mật khẩu";
+                        
+                        // Show error dialog
+                        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(LoginActivity.this);
+                        builder.setTitle("Lỗi");
+                        builder.setMessage(getResetPasswordErrorMessage(errorMessage));
+                        builder.setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
+                        builder.show();
                     }
                 });
+    }
+
+    private String getResetPasswordErrorMessage(String firebaseError) {
+        if (firebaseError.contains("no user record")) {
+            return "Không tìm thấy tài khoản với email này";
+        } else if (firebaseError.contains("badly formatted")) {
+            return "Email không đúng định dạng";
+        } else if (firebaseError.contains("network")) {
+            return "Lỗi kết nối mạng. Vui lòng kiểm tra lại kết nối";
+        } else {
+            return "Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau";
+        }
     }
 
     @Override

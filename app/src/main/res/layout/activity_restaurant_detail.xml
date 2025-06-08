@@ -8,6 +8,14 @@
     android:background="@android:color/white"
     tools:context=".RestaurantMenuActivity">
 
+    <!-- Loading Indicator -->
+    <ProgressBar
+        android:id="@+id/loadingProgressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBar"
         android:layout_width="match_parent"
@@ -71,10 +79,12 @@
         </com.google.android.material.appbar.CollapsingToolbarLayout>
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- Content Container -->
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/contentContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:paddingBottom="80dp"
+        android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
@@ -248,8 +258,7 @@
         android:orientation="horizontal"
         android:padding="20dp"
         android:background="@color/white"
-
-        >
+        android:visibility="gone">
 
         <!-- Cart Icon and Quantity -->
         <LinearLayout

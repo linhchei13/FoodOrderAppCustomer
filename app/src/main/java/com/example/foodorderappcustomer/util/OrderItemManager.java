@@ -37,7 +37,7 @@ import java.util.Random;
  */
 public class OrderItemManager {
     private static final String TAG = "OrderItemManager";
-    private static final String PREF_NAME = "cart_preferences";
+    private static final String PREF_NAME = "cart" + FirebaseAuth.getInstance().getUid();
     private static final String CART_ITEMS_KEY = "cart_items";
 
     private static OrderItemManager instance;

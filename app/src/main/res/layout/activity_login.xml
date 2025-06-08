@@ -72,6 +72,26 @@
             android:textColor="@color/black">
 
         </EditText>
+
+        <TextView
+            android:id="@+id/forgotPasswordText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="8dp"
+            android:text="Quên mật khẩu?"
+            android:textColor="@color/rebecca_purple"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/login_error_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@android:color/holo_red_dark"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
         <!--        </com.google.android.material.textfield.TextInputLayout>-->
 
         <Button

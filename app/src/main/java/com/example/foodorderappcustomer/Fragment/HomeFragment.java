@@ -298,12 +298,17 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
 
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     String id = snapshot.getKey();
-                    Log.d("RestaurantFragment", "Loaded restaurant ID: " + snapshot);
                     loadRestaurantReviews(id);
                     loadItems(id);
 
                     Restaurant restaurant = snapshot.getValue(Restaurant.class);
                     restaurant.setId(snapshot.getKey());
+                    if (snapshot.hasChild("category")) {
+                        String category = snapshot.child("category").getValue(String.class);
+                        restaurant.setCategory(category);
+                    } else {
+                        restaurant.setCategory("Chưa có danh mục");
+                    }
 
                     restaurantList.add(restaurant);
                 }

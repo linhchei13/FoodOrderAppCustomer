@@ -38,6 +38,7 @@ public class RegistrationActivity extends AppCompatActivity {
     private EditText signupFirstname;
     private EditText signupLastname;
     private EditText signupEmail;
+    private EditText signupPhone;
     private EditText signupPassword;
     private EditText rePassword;
     private Button signupButton;
@@ -63,6 +64,7 @@ public class RegistrationActivity extends AppCompatActivity {
         signupFirstname = findViewById(R.id.signup_firstname);
         signupLastname = findViewById(R.id.signup_lastname);
         signupEmail = findViewById(R.id.signup_email);
+        signupPhone = findViewById(R.id.signup_phone);
         signupPassword = findViewById(R.id.signup_password);
         rePassword = findViewById(R.id.re_password);
         signupButton = findViewById(R.id.signup_button);
@@ -79,11 +81,12 @@ public class RegistrationActivity extends AppCompatActivity {
                 String firstName = signupFirstname.getText().toString().trim();
                 String lastName = signupLastname.getText().toString().trim();
                 String email = signupEmail.getText().toString().trim();
+                String phone = signupPhone.getText().toString().trim();
                 String password = signupPassword.getText().toString().trim();
                 String repassword = rePassword.getText().toString().trim();
 
-                if (validateInputs(firstName, lastName, email, password, repassword)) {
-                    registerUser(firstName, lastName, email, password);
+                if (validateInputs(firstName, lastName, email, phone, password, repassword)) {
+                    registerUser(firstName, lastName, email, phone, password);
                 }
             }
         });
@@ -97,7 +100,7 @@ public class RegistrationActivity extends AppCompatActivity {
         });
     }
 
-    private boolean validateInputs(String firstName, String lastName, String email, String password, String repassword) {
+    private boolean validateInputs(String firstName, String lastName, String email, String phone, String password, String repassword) {
         boolean isValid = true;
 
         if (firstName.isEmpty()) {
@@ -115,6 +118,14 @@ public class RegistrationActivity extends AppCompatActivity {
             isValid = false;
         } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             signupEmail.setError("Email không hợp lệ");
+            isValid = false;
+        }
+
+        if (phone.isEmpty()) {
+            signupPhone.setError("Vui lòng nhập số điện thoại");
+            isValid = false;
+        } else if (!isValidPhoneNumber(phone)) {
+            signupPhone.setError("Số điện thoại không hợp lệ");
             isValid = false;
         }
 
@@ -137,7 +148,21 @@ public class RegistrationActivity extends AppCompatActivity {
         return isValid;
     }
 
-    private void registerUser(String firstName, String lastName, String email, String password) {
+    private boolean isValidPhoneNumber(String phone) {
+        // Remove any spaces or special characters
+        phone = phone.replaceAll("[^0-9+]", "");
+        
+        // Check if the phone number starts with +84 or 0
+        if (phone.startsWith("+84")) {
+            phone = "0" + phone.substring(3);
+        }
+        
+        // Vietnamese phone number validation
+        // Must start with 0 and have 10 digits
+        return phone.matches("^0[0-9]{9}$");
+    }
+
+    private void registerUser(String firstName, String lastName, String email, String phone, String password) {
         // Show progress dialog
         progressDialog.show();
 
@@ -155,7 +180,8 @@ public class RegistrationActivity extends AppCompatActivity {
                                         firebaseUser.getUid(),
                                         firstName,
                                         lastName,
-                                        email
+                                        email,
+                                        phone
                                 );
 
                                 // Save user data to the database

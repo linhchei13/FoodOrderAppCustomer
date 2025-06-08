@@ -52,7 +52,7 @@ import retrofit2.Response;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LocationActivity extends AppCompatActivity {
+public class LocationActivity extends AppCompatActivity implements SavedAddressAdapter.OnEditClickListener {
     private static final String TAG = "LocationActivity";
     private static final int SEARCH_DEBOUNCE_DELAY = 500; // 500ms delay
     private static final int MAX_SEARCH_RESULTS = 10;
@@ -186,10 +186,6 @@ public class LocationActivity extends AppCompatActivity {
             if (position < predictions.size()) {
                 PlaceResponse.Predictions selectedPlace = predictions.get(position);
                 String selectedAddress = searchResults.get(position);
-
-                // Check if we should add this as a new saved address
-
-                    // Return selected location directly
                 Intent resultIntent = new Intent();
                 resultIntent.putExtra("selected_address", selectedAddress);
                 resultIntent.putExtra("place_id", selectedPlace.getPlaceId());
@@ -323,7 +319,7 @@ public class LocationActivity extends AppCompatActivity {
         addNewButton = findViewById(R.id.addNewButton);
         
         savedAddresses = new ArrayList<>();
-        savedAddressAdapter = new SavedAddressAdapter(savedAddresses, this::onSavedAddressClick);
+        savedAddressAdapter = new SavedAddressAdapter(savedAddresses, this::onSavedAddressClick, this);
         
         savedAddressRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         savedAddressRecyclerView.setAdapter(savedAddressAdapter);
@@ -423,5 +419,16 @@ public class LocationActivity extends AppCompatActivity {
         if (searchRunnable != null) {
             searchHandler.removeCallbacks(searchRunnable);
         }
+    }
+
+    @Override
+    public void onEditClick(SavedAddress address) {
+        Intent intent = new Intent(this, AddSavedAddressActivity.class);
+        intent.putExtra("address_id", address.getId());
+        intent.putExtra("address_label", address.getLabel());
+        intent.putExtra("address_text", address.getAddress());
+        intent.putExtra("place_id", address.getPlaceId());
+        intent.putExtra("is_editing", true);
+        startActivity(intent);
     }
 }

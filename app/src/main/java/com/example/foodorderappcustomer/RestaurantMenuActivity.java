@@ -13,11 +13,14 @@ import android.widget.LinearLayout;
 import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ProgressBar;
+
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.widget.NestedScrollView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -43,6 +46,7 @@ import com.google.firebase.storage.StorageReference;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -76,6 +80,8 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
     private TextView cartQuantityTV;
     private ImageButton favoriteButton;
     private ImageButton showInfoButton;
+    private ProgressBar loadingProgressBar;
+    private NestedScrollView contentContainer;
 
     // Data
     private String restaurantId;
@@ -110,6 +116,9 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
     private FirebaseAuth mAuth;
     private DatabaseReference favoritesRef;
     private DatabaseReference restaurantRef;
+
+    private boolean isRestaurantDataLoaded = false;
+    private boolean isMenuDataLoaded = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -163,10 +172,13 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
         menuItemsByCategory = new HashMap<>();
         cuisineTypes = new ArrayList<>();
 
-        // Load restaurant details
-        loadRestaurantDetails();
+        // Show loading indicator and hide content initially
+        loadingProgressBar.setVisibility(View.VISIBLE);
+        contentContainer.setVisibility(View.GONE);
+        cartButtonLayout.setVisibility(View.GONE);
 
-        // Load menu items for this restaurant
+        // Load data
+        loadRestaurantDetails();
         loadMenuItems();
 
         // Setup click listeners
@@ -178,7 +190,6 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
         // Check if restaurant is in favorites
         checkFavoriteStatus();
     }
-
 
     private void initializeViews() {
         toolbar = findViewById(R.id.toolbar);
@@ -201,6 +212,8 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
         favoriteButton = findViewById(R.id.favoriteButton);
         categoryText = findViewById(R.id.categoryText);
         showInfoButton = findViewById(R.id.showInformation);
+        loadingProgressBar = findViewById(R.id.loadingProgressBar);
+        contentContainer = findViewById(R.id.contentContainer);
     }
 
     private void setupClickListeners() {
@@ -363,6 +376,18 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
         });
     }
 
+    private void checkAndShowContent() {
+        if (isRestaurantDataLoaded && isMenuDataLoaded) {
+            // All data is loaded, show content
+            loadingProgressBar.setVisibility(View.GONE);
+            contentContainer.setVisibility(View.VISIBLE);
+            
+            // Show cart button if there are items
+            if (!orderItemManager.getRestaurantItems(restaurantId).isEmpty()) {
+                cartButtonLayout.setVisibility(View.VISIBLE);
+            }
+        }
+    }
 
     private void loadRestaurantDetails() {
         databaseReference.child("restaurants").child(restaurantId).addValueEventListener(new ValueEventListener() {
@@ -403,6 +428,8 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
                             .error(R.drawable.logo2)
                             .into(restImageView);
 
+                    isRestaurantDataLoaded = true;
+                    checkAndShowContent();
                 } else {
                     Toast.makeText(RestaurantMenuActivity.this, "Restaurant not found", Toast.LENGTH_SHORT).show();
                     finish();
@@ -475,60 +502,91 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
                         menuItemsByCategory.clear();
 
                         for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                            // Create menu item
                             MenuItem menuItem = snapshot.getValue(MenuItem.class);
-                            menuItem.setRestaurantId(restaurantId);
-                            menuItem.setId(snapshot.getKey());
+                            if (menuItem != null) {
+                                menuItem.setRestaurantId(restaurantId);
+                                menuItem.setId(snapshot.getKey());
 
-                            // Add to the list
-                            menuItems.add(menuItem);
-                            String category = snapshot.child("category").getValue(String.class);
-                            if (category == null) {
-                                category = "Khác";
+                                // Add to the list
+                                menuItems.add(menuItem);
+                                String category = menuItem.getCategory();
+                                if (category == null || category.trim().isEmpty()) {
+                                    category = "Khác";
+                                }
+
+                                // Add to category map
+                                if (!menuItemsByCategory.containsKey(category)) {
+                                    menuItemsByCategory.put(category, new ArrayList<>());
+                                }
+                                menuItemsByCategory.get(category).add(menuItem);
                             }
-                            // Add to category map
-                            if (!menuItemsByCategory.containsKey(category)) {
-                                menuItemsByCategory.put(category, new ArrayList<>());
-                            }
-                            menuItemsByCategory.get(category).add(menuItem);
                         }
 
                         // Update menu tab layout
                         updateMenuTabs();
 
-                        // Update menu items adapter
+                        // Update menu items adapter with all items initially
                         menuItemAdapter.updateData(menuItems);
+                        
+                        // Mark menu data as loaded
+                        isMenuDataLoaded = true;
+                        checkAndShowContent();
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError databaseError) {
                         Log.e(TAG, "Failed to load menu items: " + databaseError.getMessage());
                         Toast.makeText(RestaurantMenuActivity.this, "Error loading menu items", Toast.LENGTH_SHORT).show();
+                        finish();
                     }
                 });
+    }
+
+    private void updateMenuTabs() {
+        menuTabLayout.removeAllTabs();
+        
+        // Add "All" tab first
+        TabLayout.Tab allTab = menuTabLayout.newTab().setText("All");
+        menuTabLayout.addTab(allTab);
+        
+        // Add other category tabs
+        for (String category : menuItemsByCategory.keySet()) {
+            menuTabLayout.addTab(menuTabLayout.newTab().setText(category));
+        }
+
+        // Select "All" tab by default
+        if (menuTabLayout.getTabCount() > 0) {
+            menuTabLayout.selectTab(menuTabLayout.getTabAt(0));
+            // Show all menu items initially
+            filterMenuItemsByCategory("All");
+        }
     }
 
     private void filterMenuItemsByCategory(String category) {
         filteredMenuItems.clear();
 
         if (category.equals("All")) {
+            // Show all menu items
             filteredMenuItems.addAll(menuItems);
+            // Sort items by category for better organization
+            Collections.sort(filteredMenuItems, (item1, item2) -> {
+                // First sort by category
+                int categoryCompare = item1.getCategory().compareTo(item2.getCategory());
+                if (categoryCompare != 0) {
+                    return categoryCompare;
+                }
+                // Then sort by name within same category
+                return item1.getName().compareTo(item2.getName());
+            });
         } else if (menuItemsByCategory.containsKey(category)) {
+            // Show items from specific category
             filteredMenuItems.addAll(menuItemsByCategory.get(category));
+            // Sort items by name within category
+            Collections.sort(filteredMenuItems, (item1, item2) -> 
+                item1.getName().compareTo(item2.getName()));
         }
 
         menuItemAdapter.updateData(filteredMenuItems);
-    }
-
-    private void updateMenuTabs() {
-        menuTabLayout.removeAllTabs();
-        for (String category : menuItemsByCategory.keySet()) {
-            menuTabLayout.addTab(menuTabLayout.newTab().setText(category));
-        }
-        if (menuTabLayout.getTabCount() > 0) {
-            menuTabLayout.addTab(menuTabLayout.newTab().setText("All"), 0);
-            menuTabLayout.selectTab(menuTabLayout.getTabAt(0));
-        }
     }
 
     // Update the onActivityResult method in RestaurantMenuActivity.java
@@ -607,23 +665,11 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
             String formattedTotal = currencyFormat.format(total).replace("₫", "đ");
             viewCartButton.setText("Xem đơn hàng • " + formattedTotal);
 
-            // Show cart button if it was hidden
-            if (cartButtonLayout.getVisibility() == View.GONE) {
+            // Only show cart button if content is visible
+            if (contentContainer.getVisibility() == View.VISIBLE) {
                 cartButtonLayout.setVisibility(View.VISIBLE);
-
-                // Set initial position (below screen)
-                cartButtonLayout.setTranslationY(cartButtonLayout.getHeight());
-
-                // Animate slide up
-                ObjectAnimator slideUp = ObjectAnimator.ofFloat(cartButtonLayout, "translationY", 0f);
-                slideUp.setDuration(300);
-                slideUp.setInterpolator(new DecelerateInterpolator());
-                slideUp.start();
-
-                Log.d(TAG, "updateCartButton: Setting cartButtonLayout to VISIBLE with slide up animation");
             }
         } else {
-            // Hide cart button if no items left
             cartButtonLayout.setVisibility(View.GONE);
         }
     }

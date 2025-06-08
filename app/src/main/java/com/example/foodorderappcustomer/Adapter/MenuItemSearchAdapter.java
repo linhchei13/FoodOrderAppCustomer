@@ -1,52 +1,45 @@
 package com.example.foodorderappcustomer.Adapter;
 
+import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.foodorderappcustomer.MenuItemDetailActivity;
 import com.example.foodorderappcustomer.Models.MenuItem;
+import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.R;
+import com.example.foodorderappcustomer.RestaurantMenuActivity;
+import com.example.foodorderappcustomer.util.OrderItemManager;
 
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 
 public class MenuItemSearchAdapter extends RecyclerView.Adapter<MenuItemSearchAdapter.MenuItemViewHolder> {
-
     private List<MenuItem> menuItems;
-    private OnMenuItemClickListener listener;
-    private NumberFormat currencyFormatter;
+    private Context context;
+    private OrderItemManager orderItemManager;
 
-    public interface OnMenuItemClickListener {
-        void onMenuItemClick(MenuItem menuItem);
-        void onAddToCartClick(MenuItem menuItem);
-    }
-
-    public MenuItemSearchAdapter(List<MenuItem> menuItems) {
+    public MenuItemSearchAdapter(List<MenuItem> menuItems, Context context) {
         this.menuItems = menuItems;
-        currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
-    }
-
-    public void setMenuItems(List<MenuItem> menuItems) {
-        this.menuItems = menuItems;
-        notifyDataSetChanged();
-    }
-
-    public void setOnMenuItemClickListener(OnMenuItemClickListener listener) {
-        this.listener = listener;
+        this.context = context;
+        this.orderItemManager = OrderItemManager.getInstance(context);
     }
 
     @NonNull
     @Override
     public MenuItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_search_menu, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_menu_search, parent, false);
         return new MenuItemViewHolder(view);
     }
 
@@ -62,97 +55,65 @@ public class MenuItemSearchAdapter extends RecyclerView.Adapter<MenuItemSearchAd
     }
 
     class MenuItemViewHolder extends RecyclerView.ViewHolder {
-        ImageView imgFood;
-        TextView tvItemName;
-        TextView tvCurrentPrice;
-        TextView tvOriginalPrice;
-        TextView tvRestaurantName;
-        TextView tvStats;
-        ImageView btnAdd;
+        private ImageView menuItemImage;
+        private TextView menuItemName;
+        private TextView menuItemPrice;
+        private TextView menuItemOriginalPrice;
+        private ImageView addButton;
+        private LinearLayout menuItemInfo;
 
-        MenuItemViewHolder(@NonNull View itemView) {
+        public MenuItemViewHolder(@NonNull View itemView) {
             super(itemView);
-            imgFood = itemView.findViewById(R.id.imgFood);
-            tvItemName = itemView.findViewById(R.id.tvItemName);
-            tvCurrentPrice = itemView.findViewById(R.id.tvCurrentPrice);
-            tvOriginalPrice = itemView.findViewById(R.id.tvOriginalPrice);
-            tvRestaurantName = itemView.findViewById(R.id.tvRestaurantName);
-            tvStats = itemView.findViewById(R.id.tvStats);
-            btnAdd = itemView.findViewById(R.id.btnAdd);
-
-            itemView.setOnClickListener(v -> {
-                int position = getAdapterPosition();
-                if (position != RecyclerView.NO_POSITION && listener != null) {
-                    listener.onMenuItemClick(menuItems.get(position));
-                }
-            });
-
-            btnAdd.setOnClickListener(v -> {
-                int position = getAdapterPosition();
-                if (position != RecyclerView.NO_POSITION && listener != null) {
-                    listener.onAddToCartClick(menuItems.get(position));
-                }
-            });
+            menuItemImage = itemView.findViewById(R.id.menuItemImage);
+            menuItemName = itemView.findViewById(R.id.menuItemName);
+            menuItemPrice = itemView.findViewById(R.id.menuItemPrice);
+            menuItemOriginalPrice = itemView.findViewById(R.id.menuItemOriginalPrice);
+            addButton = itemView.findViewById(R.id.addButton);
         }
 
-        void bind(MenuItem menuItem) {
-            tvItemName.setText(menuItem.getName());
+        public void bind(MenuItem menuItem) {
+            menuItemName.setText(menuItem.getName());
 
             // Format price
-            String formattedPrice = formatPrice(menuItem.getPrice());
-            tvCurrentPrice.setText(formattedPrice);
+            NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
+            String formattedPrice = formatter.format(menuItem.getPrice()) + "đ";
+            menuItemPrice.setText(formattedPrice);
 
-            // If there's a discount (not in your MenuItem model yet, you might want to add it)
-            // For now, we'll just hide the original price view
-            tvOriginalPrice.setVisibility(View.GONE);
-
-            // Set restaurant name if available
-            if (menuItem.getRestaurantId() != null && !menuItem.getRestaurantId().isEmpty()) {
-                // Ideally, you would get the restaurant name from the restaurant object
-                // For now, we'll hide this or set it to a default value
-                tvRestaurantName.setVisibility(View.VISIBLE);
-                tvRestaurantName.setText("Restaurant"); // Replace with actual restaurant name
+            // Show original price if there's a discount
+            if (menuItem.getPrice() > 0 && menuItem.getPrice() > menuItem.getPrice()) {
+                String originalPrice = formatter.format(menuItem.getPrice()) + "đ";
+                menuItemOriginalPrice.setText(originalPrice);
+                menuItemOriginalPrice.setVisibility(View.VISIBLE);
+                // Add strikethrough effect
+                menuItemOriginalPrice.setPaintFlags(menuItemOriginalPrice.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
             } else {
-                tvRestaurantName.setVisibility(View.GONE);
+                menuItemOriginalPrice.setVisibility(View.GONE);
             }
 
-            // Set stats
-            tvStats.setText(menuItem.getStats());
-
-            // Load image with Glide if URL exists
+            // Load image
             if (menuItem.getImageUrl() != null && !menuItem.getImageUrl().isEmpty()) {
-                Glide.with(itemView.getContext())
-                     .load(menuItem.getImageUrl())
-                     .placeholder(R.drawable.logo2)
-                     .into(imgFood);
+                Glide.with(context)
+                        .load(menuItem.getImageUrl())
+                        .placeholder(R.drawable.loading_img)
+                        .error(R.drawable.loading_img)
+                        .into(menuItemImage);
             } else {
-                imgFood.setImageResource(R.drawable.logo2);
+                menuItemImage.setImageResource(R.drawable.loading_img);
             }
-        }
 
-        private String formatPrice(double price) {
-            String formatted = currencyFormatter.format(price);
-            return formatted.replace("₫", "đ");
+            // Set add button click listener
+            addButton.setOnClickListener(v -> {
+                // Add animation effect
+                Intent intent = new Intent(context, RestaurantMenuActivity.class);
+
+                context.startActivity(intent);
+            });
+
+            // Set click listener for the entire item
+            itemView.setOnClickListener(v -> {
+                // You can add item detail view here if needed
+                Toast.makeText(context, menuItem.getName(), Toast.LENGTH_SHORT).show();
+            });
         }
     }
 }
-////            // For now, we'll just hide the original price view
-////            tvOriginalPrice.setVisibility(View.GONE);
-////
-////            // Load image with Glide if URL exists
-////            if (menuItem.getImageUrl() != null && !menuItem.getImageUrl().isEmpty()) {
-////                Glide.with(itemView.getContext())
-////                     .load(menuItem.getImageUrl())
-////                     .placeholder(R.drawable.logo2)
-////                     .into(imgFood);
-////            } else {
-////                imgFood.setImageResource(R.drawable.logo2);
-////            }
-////        }
-////
-////        private String formatPrice(double price) {
-////            String formatted = currencyFormatter.format(price);
-////            return formatted.replace("₫", "đ");
-////        }
-//    }
-//}

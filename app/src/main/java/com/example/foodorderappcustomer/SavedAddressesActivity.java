@@ -114,19 +114,38 @@ public class SavedAddressesActivity extends AppCompatActivity {
 
     private void setupRecyclerView() {
         addressList = new ArrayList<>();
-        adapter = new SavedAddressAdapter(addressList, new SavedAddressAdapter.OnAddressClickListener() {
-            @Override
-            public void onAddressClick(SavedAddress address) {
-                // Handle address click
-                Intent resultIntent = new Intent();
-                resultIntent.putExtra("selected_address", address.getAddress());
-                resultIntent.putExtra("place_id", address.getPlaceId());
-                setResult(RESULT_OK, resultIntent);
-                finish();
+        adapter = new SavedAddressAdapter(addressList, 
+            // Address click listener
+            new SavedAddressAdapter.OnAddressClickListener() {
+                @Override
+                public void onAddressClick(SavedAddress address) {
+                    Intent resultIntent = new Intent();
+                    resultIntent.putExtra("selected_address", address.getAddress());
+                    resultIntent.putExtra("place_id", address.getPlaceId());
+                    setResult(RESULT_OK, resultIntent);
+                    finish();
+                }
+            },
+            // Edit click listener
+            new SavedAddressAdapter.OnEditClickListener() {
+                @Override
+                public void onEditClick(SavedAddress address) {
+                    openEditAddressActivity(address);
+                }
             }
-        });
+        );
         recyclerViewSavedAddresses.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewSavedAddresses.setAdapter(adapter);
+    }
+
+    private void openEditAddressActivity(SavedAddress address) {
+        Intent intent = new Intent(this, AddSavedAddressActivity.class);
+        intent.putExtra("address_id", address.getId());
+        intent.putExtra("address_label", address.getLabel());
+        intent.putExtra("address_text", address.getAddress());
+        intent.putExtra("place_id", address.getPlaceId());
+        intent.putExtra("is_editing", true);
+        startActivity(intent);
     }
 
     private void setupListeners() {

@@ -85,9 +85,27 @@
             android:layout_marginTop="20dp"
             android:drawablePadding="8dp"
             android:hint="Email"
+            android:inputType="textEmailAddress"
             android:padding="8dp"
             android:textColor="@color/black" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="20dp"
+            >
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/signup_phone"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:drawablePadding="8dp"
+            android:hint="Số điện thoại"
+            android:inputType="phone"
+            android:padding="8dp"
+            android:textColor="@color/black" />
+        </com.google.android.material.textfield.TextInputLayout>
+
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"

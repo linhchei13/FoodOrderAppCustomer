@@ -119,7 +119,7 @@ public class CheckOutActivity extends AppCompatActivity {
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                        String selectedAddress = result.getData().getStringExtra("current_address");
+                        String selectedAddress = result.getData().getStringExtra("selected_address");
                         if (selectedAddress != null && !selectedAddress.isEmpty()) {
                             // Update the address text
                             addressEditText.setText(selectedAddress);
@@ -237,11 +237,6 @@ public class CheckOutActivity extends AppCompatActivity {
                         if (dataSnapshot.exists()) {
                             restaurantName = dataSnapshot.child("name").getValue(String.class);
                             restaurantAddress = dataSnapshot.child("address").getValue(String.class);
-
-                            // Update delivery address
-                            if (restaurantAddress != null) {
-                                addressEditText.setText(restaurantAddress);
-                            }
 
                             // Update delivery fee if available
                             Double restaurantDeliveryFee = dataSnapshot.child("deliveryFee").getValue(Double.class);
@@ -415,8 +410,7 @@ public class CheckOutActivity extends AppCompatActivity {
                                 "Đặt hàng thành công! Mã đơn hàng: " + submittedOrder.getId(),
                                 Toast.LENGTH_LONG).show();
 
-                        // Go back to main activity or order history
-                        Intent intent = new Intent(CheckOutActivity.this, MainActivity.class);
+                        Intent intent = new Intent(CheckOutActivity.this, OrderInformationActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                         startActivity(intent);
                         finish();

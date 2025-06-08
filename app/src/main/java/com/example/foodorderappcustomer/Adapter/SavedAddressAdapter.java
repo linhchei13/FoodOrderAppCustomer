@@ -4,6 +4,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -18,14 +19,20 @@ import java.util.List;
 public class SavedAddressAdapter extends RecyclerView.Adapter<SavedAddressAdapter.ViewHolder> {
     private List<SavedAddress> addresses;
     private OnAddressClickListener listener;
+    private OnEditClickListener editListener;
 
     public interface OnAddressClickListener {
         void onAddressClick(SavedAddress address);
     }
 
-    public SavedAddressAdapter(List<SavedAddress> addresses, OnAddressClickListener listener) {
+    public interface OnEditClickListener {
+        void onEditClick(SavedAddress address);
+    }
+
+    public SavedAddressAdapter(List<SavedAddress> addresses, OnAddressClickListener listener, OnEditClickListener editListener) {
         this.addresses = addresses;
         this.listener = listener;
+        this.editListener = editListener;
     }
 
     @NonNull
@@ -47,6 +54,12 @@ public class SavedAddressAdapter extends RecyclerView.Adapter<SavedAddressAdapte
                 listener.onAddressClick(address);
             }
         });
+
+        holder.editButton.setOnClickListener(v -> {
+            if (editListener != null) {
+                editListener.onEditClick(address);
+            }
+        });
     }
 
     @Override
@@ -64,11 +77,13 @@ public class SavedAddressAdapter extends RecyclerView.Adapter<SavedAddressAdapte
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView labelTextView;
         TextView addressTextView;
+        ImageView editButton;
 
         ViewHolder(View itemView) {
             super(itemView);
             labelTextView = itemView.findViewById(R.id.addressLabel);
             addressTextView = itemView.findViewById(R.id.addressText);
+            editButton = itemView.findViewById(R.id.editBtn);
         }
 
         public void bind(SavedAddress address) {

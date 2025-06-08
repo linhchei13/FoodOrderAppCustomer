@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -14,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.core.widget.NestedScrollView;
 
 import com.bumptech.glide.Glide;
 import com.example.foodorderappcustomer.EditProfileActivity;
@@ -42,7 +44,8 @@ public class AccountFragment extends Fragment {
     private SwipeRefreshLayout swipeRefreshLayout;
     private StorageReference storageReference;
     private ImageView profileImageView;
-
+    private ProgressBar loadingProgressBar;
+    private NestedScrollView contentScrollView;
     private TextView addressesOption, paymentMethodsOption, notificationsOption, helpOption;
 
     public AccountFragment() {
@@ -76,6 +79,13 @@ public class AccountFragment extends Fragment {
         profileImageView = view.findViewById(R.id.profileImageView);
         addressesOption = view.findViewById(R.id.addressesOption);
         helpOption = view.findViewById(R.id.helpOption);
+        loadingProgressBar = view.findViewById(R.id.loadingProgressBar);
+        contentScrollView = view.findViewById(R.id.contentScrollView);
+
+        // Hide content initially
+        contentScrollView.setVisibility(View.GONE);
+        loadingProgressBar.setVisibility(View.VISIBLE);
+
         // Set up refresh listener
         swipeRefreshLayout.setOnRefreshListener(this::loadUserData);
 
@@ -85,8 +95,10 @@ public class AccountFragment extends Fragment {
             Intent intent = new Intent(getActivity(), EditProfileActivity.class);
             startActivity(intent);
         });
+
         // Load user data
         loadUserData();
+
         addressesOption.setOnClickListener(v -> {
             Intent intent = new Intent(getActivity(), SavedAddressesActivity.class);
             startActivity(intent);
@@ -95,33 +107,45 @@ public class AccountFragment extends Fragment {
             Intent intent = new Intent(getActivity(), com.example.foodorderappcustomer.HelpActivity.class);
             startActivity(intent);
         });
-
     }
 
     private void loadUserData() {
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser != null) {
             // Show loading indicator
-            swipeRefreshLayout.setRefreshing(true);
+            if (!swipeRefreshLayout.isRefreshing()) {
+                loadingProgressBar.setVisibility(View.VISIBLE);
+                contentScrollView.setVisibility(View.GONE);
+            }
 
             databaseReference.child("users").child(currentUser.getUid())
                     .addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                            // Hide loading indicators
                             swipeRefreshLayout.setRefreshing(false);
+                            loadingProgressBar.setVisibility(View.GONE);
                             
                             if (dataSnapshot.exists()) {
-                                // Get user's name
+                                // Get user's data
                                 String firstName = dataSnapshot.child("firstName").getValue(String.class);
                                 String lastName = dataSnapshot.child("lastName").getValue(String.class);
                                 String email = dataSnapshot.child("email").getValue(String.class);
                                 String phone = dataSnapshot.child("phone").getValue(String.class);
                                 String profile_url = dataSnapshot.child("profileImageUrl").getValue(String.class);
-                                Glide.with(getContext())
-                                        .load(profile_url)
-                                        .placeholder(R.drawable.loading_img)
-                                        .error(R.drawable.baseline_person_24)
-                                        .into(profileImageView);
+
+                                // Load profile image
+                                if (profile_url != null && !profile_url.isEmpty()) {
+                                    Glide.with(getContext())
+                                            .load(profile_url)
+                                            .placeholder(R.drawable.loading_img)
+                                            .error(R.drawable.baseline_person_24)
+                                            .into(profileImageView);
+                                } else {
+                                    profileImageView.setImageResource(R.drawable.baseline_person_24);
+                                }
+
+                                // Update text views
                                 if (firstName != null && lastName != null) {
                                     nameTextView.setText(firstName + " " + lastName);
                                 } else {
@@ -133,29 +157,53 @@ public class AccountFragment extends Fragment {
                                 } else {
                                     emailTextView.setText(currentUser.getEmail());
                                 }
-                                if (phone != null) {
+
+                                if (phone != null && !phone.isEmpty()) {
                                     phoneTextView.setText(phone);
                                 } else {
-                                    phoneTextView.setText(currentUser.getEmail());
+                                    phoneTextView.setText("Chưa cập nhật số điện thoại");
                                 }
+
+                                // Show content after all data is loaded
+                                contentScrollView.setVisibility(View.VISIBLE);
                             } else {
                                 // No user data in database, use info from auth
                                 nameTextView.setText(currentUser.getEmail());
                                 emailTextView.setText(currentUser.getEmail());
+                                phoneTextView.setText("Chưa cập nhật số điện thoại");
+                                profileImageView.setImageResource(R.drawable.baseline_person_24);
+                                
+                                // Show content even with minimal data
+                                contentScrollView.setVisibility(View.VISIBLE);
                             }
                         }
 
                         @Override
                         public void onCancelled(@NonNull DatabaseError databaseError) {
+                            // Hide loading indicators
                             swipeRefreshLayout.setRefreshing(false);
+                            loadingProgressBar.setVisibility(View.GONE);
+                            
+                            // Show error message
                             Toast.makeText(getContext(), "Lỗi: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                            
+                            // Show content with error state
+                            contentScrollView.setVisibility(View.VISIBLE);
+                            nameTextView.setText("Lỗi tải dữ liệu");
+                            emailTextView.setText("Vui lòng thử lại sau");
+                            phoneTextView.setText("Không thể tải số điện thoại");
                         }
                     });
         } else {
             // User not logged in
+            swipeRefreshLayout.setRefreshing(false);
+            loadingProgressBar.setVisibility(View.GONE);
+            contentScrollView.setVisibility(View.VISIBLE);
+            
             nameTextView.setText("Chưa đăng nhập");
             emailTextView.setText("Vui lòng đăng nhập để xem thông tin");
-            swipeRefreshLayout.setRefreshing(false);
+            phoneTextView.setText("Vui lòng đăng nhập để xem thông tin");
+            profileImageView.setImageResource(R.drawable.baseline_person_24);
         }
     }
 
