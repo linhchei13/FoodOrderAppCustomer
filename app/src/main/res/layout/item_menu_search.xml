@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_margin="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="@android:color/transparent">
+
+
+        <!-- Menu Item Image -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/menuItemCard"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:cardCornerRadius="20dp">
+        <ImageView
+            android:id="@+id/menuItemImage"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/loading_img" />
+
+        <!-- Quantity Controls -->
+        <LinearLayout
+            android:id="@+id/quantityControls"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@drawable/quantity_background"
+            android:visibility="gone"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="4dp">
+
+            <ImageButton
+                android:id="@+id/btnDecrease"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/baseline_remove_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="2dp" />
+
+            <TextView
+                android:id="@+id/tvQuantity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:minWidth="24dp"
+                android:gravity="center"
+                android:textColor="@android:color/black" />
+
+            <ImageButton
+                android:id="@+id/btnIncrease"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/baseline_add_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="2dp" />
+        </LinearLayout>
+
+        <!-- Add Button (shown when quantity is 0) -->
+        <ImageButton
+            android:id="@+id/addButton"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/baseline_add_box_24"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:visibility="visible" />
+    </androidx.cardview.widget.CardView>
+
+        <!-- Add Button -->
+
+
+        <!-- Menu Item Info -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/menuItemCard"
+            app:layout_constraintStart_toStartOf="parent"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <!-- Menu Item Name -->
+            <TextView
+                android:id="@+id/menuItemName"
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:text="Bánh mi Sài Gòn"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <!-- Price Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+
+                <!-- Current Price -->
+                <TextView
+                    android:id="@+id/menuItemPrice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="25.000đ"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/black" />
+
+                <!-- Original Price (if discounted) -->
+                <TextView
+                    android:id="@+id/menuItemOriginalPrice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="7.000đ"
+                    android:textSize="12sp"
+                    android:layout_marginStart="8dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
