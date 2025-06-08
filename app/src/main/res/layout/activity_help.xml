@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/helpTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Trợ giúp và Câu hỏi thường gặp"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/black"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Example FAQ item -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1. Làm thế nào để đặt món ăn?"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bạn chọn nhà hàng, chọn món ăn, thêm vào giỏ hàng và tiến hành thanh toán."
+            android:textSize="15sp"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2. Làm sao để lưu địa chỉ giao hàng?"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vào mục 'Địa chỉ của tôi' trong tài khoản để thêm hoặc chỉnh sửa địa chỉ."
+            android:textSize="15sp"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="3. Tôi có thể thanh toán bằng những phương thức nào?"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bạn có thể thanh toán bằng tiền mặt hoặc các phương thức thanh toán điện tử hỗ trợ trong ứng dụng."
+            android:textSize="15sp"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="4. Làm sao để liên hệ hỗ trợ?"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bạn có thể liên hệ qua mục 'Trợ giúp' hoặc gửi email tới support@foodorderapp.com."
+            android:textSize="15sp"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Add more Q&A as needed -->
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView> 

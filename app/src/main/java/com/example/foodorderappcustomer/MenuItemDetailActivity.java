@@ -195,6 +195,7 @@ public class MenuItemDetailActivity extends AppCompatActivity implements OptionA
         // Set up RecyclerView
         toppingsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
+
     private void updateFoodDetails() {
         // Kiểm tra xem Activity có còn tồn tại không trước khi cập nhật UI
         if (isFinishing() || isDestroyed()) {
@@ -228,8 +229,6 @@ public class MenuItemDetailActivity extends AppCompatActivity implements OptionA
         // Calculate and update total price
         updateTotalPrice();
     }
-
-// Cập nhật phương thức loadFoodDetails() để xử lý callback sau khi Activity bị hủy
 
     private void loadFoodDetails() {
         // Lưu trữ reference để có thể hủy listener khi cần
@@ -476,7 +475,7 @@ public class MenuItemDetailActivity extends AppCompatActivity implements OptionA
     }
 
     private void addToCart() {
-        if (foodId == null || foodName == null ) {
+        if (foodId == null || foodName == null) {
             Toast.makeText(this, "Lỗi: Thông tin món ăn không đầy đủ", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -489,25 +488,33 @@ public class MenuItemDetailActivity extends AppCompatActivity implements OptionA
         orderItem.setQuantity(quantity);
         orderItem.setRestaurantId(restaurantId);
 
-        // Add selected toppings
-        if (selectedToppings != null && !selectedToppings.isEmpty()) {
-            orderItem.setToppings(new ArrayList<>(selectedToppings.values()));
+        // Add selected toppings from option groups
+        List<Option> selectedToppingsList = new ArrayList<>();
+        for (OptionGroup group : optionGroups) {
+            selectedToppingsList.addAll(group.getSelectedOptions());
         }
+        orderItem.setToppings(selectedToppingsList);
 
         // Calculate total price including toppings
         double totalPrice = foodPrice * quantity;
-        if (selectedToppings != null) {
-            for (Option topping : selectedToppings.values()) {
-                totalPrice += topping.getPrice() * quantity;
-            }
+        for (Option topping : selectedToppingsList) {
+            totalPrice += topping.getPrice() * quantity;
         }
         orderItem.setTotalPrice(totalPrice);
 
-        // Add to cart (now supports multiple restaurants)
-        orderItemManager.addItem(orderItem, this);
+        if (isItemInCart) {
+            // Use setItemQuantity to set exact quantity (not add)
+            orderItemManager.setItemQuantity(orderItem, quantity);
+            Toast.makeText(this, "Đã cập nhật giỏ hàng", Toast.LENGTH_SHORT).show();
+        } else {
+            // Add new item to cart
+            orderItemManager.addItem(orderItem);
+            Toast.makeText(this, "Đã thêm vào giỏ hàng", Toast.LENGTH_SHORT).show();
+        }
 
         // Update button text
         updateAddToCartButton();
+        finish();
     }
 
     private void addNewItemToCart() {
@@ -703,6 +710,7 @@ public class MenuItemDetailActivity extends AppCompatActivity implements OptionA
                     }
                 });
     }
+
     private void finishWithResult() {
         // Trở về màn hình menu nhà hàng với kết quả
         Intent resultIntent = new Intent();

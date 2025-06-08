@@ -28,11 +28,12 @@
             android:src="@drawable/baseline_arrow_back_24" />
 
         <TextView
+            android:id="@+id/titleTextView"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Giỏ hàng của tôi"
+            android:text="Giỏ hàng"
             android:textColor="@android:color/black"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -47,60 +48,102 @@
             android:textColor="@color/rebecca_purple"
             android:textSize="16sp" />
 
+        <TextView
+            android:id="@+id/cancelButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:padding="8dp"
+            android:text="Hủy"
+            android:textColor="@color/maplibre_blue"
+            android:textSize="16sp"
+            android:visibility="gone" />
+
     </LinearLayout>
 
+    <!-- Empty Cart Layout -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/cartItemsRecyclerView"
-        tools:listitem="@layout/item_cart_restaurant"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:paddingBottom="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/summaryPanel"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/toolbar" />
+        app:layout_constraintTop_toBottomOf="@+id/toolbar"
+        tools:listitem="@layout/item_cart_restaurant" />
 
-    <TextView
-        android:id="@+id/emptyCartText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Giỏ hàng trống"
-        android:textSize="18sp"
+    <LinearLayout
+        android:id="@+id/emptyCartLayout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:gravity="center"
+        android:orientation="vertical"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/toolbar">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/ic_shopping_cart"
+            android:alpha="0.5" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Giỏ hàng trống"
+            android:textColor="@color/gray_600"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Hãy thêm món ăn yêu thích vào giỏ hàng"
+            android:textSize="14sp" />
+
+    </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/summaryPanel"
+        android:id="@+id/manageModeBottomPanel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:color/white"
         android:elevation="8dp"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:padding="16dp"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <TextView
-            android:id="@+id/subtotalTextView"
+        <CheckBox
+            android:id="@+id/selectAllCheckBox"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tổng tiền: 0đ"
-            android:textColor="@android:color/black"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:layout_gravity="center_vertical"
+            android:text="Chọn tất cả"
+            android:textSize="16sp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
 
         <Button
-            android:id="@+id/clearCartButton"
-            android:layout_width="match_parent"
+            android:id="@+id/deleteButton"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Xóa giỏ hàng"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+            android:text="Xóa"
+            android:textColor="@color/status_cancelled"
+            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

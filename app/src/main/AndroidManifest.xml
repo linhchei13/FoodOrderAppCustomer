@@ -64,9 +64,6 @@
             android:name=".CartActivity"
             android:exported="false" />
         <activity
-            android:name=".SearchMenuActivity"
-            android:exported="false" />
-        <activity
             android:name=".SearchActivity"
             android:exported="false" />
         <activity android:name=".ReviewOrderActivity">
@@ -75,6 +72,8 @@
         <activity android:name=".SavedAddressesActivity"/>
         <activity android:name=".AddSavedAddressActivity"/>
         <activity android:name=".RestaurantInformationActivity"/>
+        <activity android:name=".HelpActivity"/>
+        <activity android:name=".PromotionActivity"/>
     </application>
 
 </manifest>

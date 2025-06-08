@@ -85,14 +85,42 @@ public class OrderItemManager {
             return;
         }
 
+        // Validate item ID
+        if (newItem.getItemId() == null || newItem.getItemId().isEmpty()) {
+            showToast("Lỗi: Không tìm thấy thông tin món ăn");
+            Log.e(TAG, "addItem: Item ID is null or empty");
+            return;
+        }
+
         // Find existing item with same ID, restaurant, and toppings
         OrderItem existingItem = findExistingItem(newItem);
 
         if (existingItem != null) {
-            // Update quantity of existing item
+            // Update quantity of existing item - ADD to existing quantity
             existingItem.setQuantity(existingItem.getQuantity() + newItem.getQuantity());
+
+            // Recalculate total price
+            double basePrice = existingItem.getItemPrice();
+            double toppingsPrice = 0;
+            if (existingItem.getToppings() != null) {
+                for (Option topping : existingItem.getToppings()) {
+                    toppingsPrice += topping.getPrice();
+                }
+            }
+            existingItem.setTotalPrice((basePrice + toppingsPrice) * existingItem.getQuantity());
+
             Log.d(TAG, "addItem: Updated quantity for existing item: " + existingItem.getItemName() + ", new quantity: " + existingItem.getQuantity());
         } else {
+            // Calculate total price for new item
+            double basePrice = newItem.getItemPrice();
+            double toppingsPrice = 0;
+            if (newItem.getToppings() != null) {
+                for (Option topping : newItem.getToppings()) {
+                    toppingsPrice += topping.getPrice();
+                }
+            }
+            newItem.setTotalPrice((basePrice + toppingsPrice) * newItem.getQuantity());
+
             // Add new item
             cartItems.add(newItem);
             Log.d(TAG, "addItem: Added new item: " + newItem.getItemName() + " from restaurant: " + newItem.getRestaurantId());
@@ -103,25 +131,97 @@ public class OrderItemManager {
         showToast("Đã thêm vào giỏ hàng");
     }
 
-    // Remove item from cart
-    public void removeItem(OrderItem item) {
-        if (cartItems.remove(item)) {
-            saveCart();
-            notifyCartUpdated();
-        }
-    }
-
-    // Update item quantity
+    // Update item quantity - SET exact quantity (not add)
     public void updateItemQuantity(OrderItem item, int newQuantity) {
         OrderItem existingItem = findExistingItem(item);
         if (existingItem != null) {
             if (newQuantity <= 0) {
                 removeItem(existingItem);
+                Log.d(TAG, "updateItemQuantity: Removed item due to zero quantity: " + existingItem.getItemName());
             } else {
+                // SET the exact quantity (not add)
                 existingItem.setQuantity(newQuantity);
+
+                // Recalculate total price
+                double basePrice = existingItem.getItemPrice();
+                double toppingsPrice = 0;
+                if (existingItem.getToppings() != null) {
+                    for (Option topping : existingItem.getToppings()) {
+                        toppingsPrice += topping.getPrice();
+                    }
+                }
+                existingItem.setTotalPrice((basePrice + toppingsPrice) * newQuantity);
+
+                saveCart();
+                notifyCartUpdated();
+                Log.d(TAG, "updateItemQuantity: Set quantity for item: " + existingItem.getItemName() + " to " + newQuantity);
+            }
+        } else {
+            Log.w(TAG, "updateItemQuantity: Item not found in cart: " + item.getItemName());
+        }
+    }
+
+    // Set item quantity to exact value (for updating from detail activity)
+    public void setItemQuantity(OrderItem item, int exactQuantity) {
+        OrderItem existingItem = findExistingItem(item);
+        if (existingItem != null) {
+            if (exactQuantity <= 0) {
+                removeItem(existingItem);
+            } else {
+                existingItem.setQuantity(exactQuantity);
+
+                // Recalculate total price
+                double basePrice = existingItem.getItemPrice();
+                double toppingsPrice = 0;
+                if (existingItem.getToppings() != null) {
+                    for (Option topping : existingItem.getToppings()) {
+                        toppingsPrice += topping.getPrice();
+                    }
+                }
+                existingItem.setTotalPrice((basePrice + toppingsPrice) * exactQuantity);
+
                 saveCart();
                 notifyCartUpdated();
             }
+        } else {
+            // If item doesn't exist and quantity > 0, add it
+            if (exactQuantity > 0) {
+                item.setQuantity(exactQuantity);
+                addItem(item);
+            }
+        }
+    }
+
+    // Remove item from cart
+    public void removeItem(OrderItem item) {
+        boolean removed = false;
+
+        // Try to find and remove by exact object reference first
+        if (cartItems.remove(item)) {
+            removed = true;
+        } else {
+            // If not found by reference, find by ID and restaurant
+            OrderItem toRemove = null;
+            for (OrderItem cartItem : cartItems) {
+                if (cartItem.getItemId().equals(item.getItemId()) &&
+                        cartItem.getRestaurantId().equals(item.getRestaurantId()) &&
+                        haveSameToppings(cartItem.getToppings(), item.getToppings())) {
+                    toRemove = cartItem;
+                    break;
+                }
+            }
+            if (toRemove != null) {
+                cartItems.remove(toRemove);
+                removed = true;
+            }
+        }
+
+        if (removed) {
+            Log.d(TAG, "removeItem: Removed item: " + item.getItemName());
+            saveCart();
+            notifyCartUpdated();
+        } else {
+            Log.w(TAG, "removeItem: Item not found in cart: " + item.getItemName());
         }
     }
 
@@ -130,6 +230,7 @@ public class OrderItemManager {
         cartItems.clear();
         saveCart();
         notifyCartUpdated();
+        Log.d(TAG, "clearCart: Cart cleared");
     }
 
     // Get all items in cart
@@ -161,18 +262,24 @@ public class OrderItemManager {
 
     // Get total price for a specific restaurant
     public double getRestaurantTotal(String restaurantId) {
-        return cartItems.stream()
-                .filter(item -> item.getRestaurantId().equals(restaurantId))
-                .mapToDouble(OrderItem::getTotalPrice)
-                .sum();
+        double total = 0;
+        for (OrderItem item : cartItems) {
+            if (item.getRestaurantId().equals(restaurantId)) {
+                total += item.getTotalPrice();
+            }
+        }
+        return total;
     }
 
     // Get total quantity for a specific restaurant
     public int getRestaurantQuantity(String restaurantId) {
-        return cartItems.stream()
-                .filter(item -> item.getRestaurantId().equals(restaurantId))
-                .mapToInt(OrderItem::getQuantity)
-                .sum();
+        int total = 0;
+        for (OrderItem item : cartItems) {
+            if (item.getRestaurantId().equals(restaurantId)) {
+                total += item.getQuantity();
+            }
+        }
+        return total;
     }
 
     // Remove all items from a specific restaurant
@@ -180,13 +287,21 @@ public class OrderItemManager {
         cartItems.removeIf(item -> item.getRestaurantId().equals(restaurantId));
         saveCart();
         notifyCartUpdated();
+        Log.d(TAG, "removeRestaurantItems: Removed all items from restaurant: " + restaurantId);
     }
 
     // Get total price of all items in cart
     public double getCartTotal() {
-        return cartItems.stream()
-                .mapToDouble(OrderItem::getTotalPrice)
-                .sum();
+        double total = 0;
+        for (OrderItem item : cartItems) {
+            total += item.getTotalPrice();
+        }
+        return total;
+    }
+
+    // Calculate total amount (alias for getCartTotal for compatibility)
+    public double calculateTotalAmount() {
+        return getCartTotal();
     }
 
     // Get total number of items in cart
@@ -196,9 +311,11 @@ public class OrderItemManager {
 
     // Get total quantity of all items in cart
     public int getTotalQuantity() {
-        return cartItems.stream()
-                .mapToInt(OrderItem::getQuantity)
-                .sum();
+        int total = 0;
+        for (OrderItem item : cartItems) {
+            total += item.getQuantity();
+        }
+        return total;
     }
 
     // Check if cart is empty
@@ -208,16 +325,35 @@ public class OrderItemManager {
 
     // Check if cart has items from specific restaurant
     public boolean hasItemsFromRestaurant(String restaurantId) {
-        return cartItems.stream()
-                .anyMatch(item -> item.getRestaurantId().equals(restaurantId));
+        for (OrderItem item : cartItems) {
+            if (item.getRestaurantId().equals(restaurantId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    // Get quantity of specific item in cart
+    // Get quantity of specific item in cart (considering toppings)
+    public int getItemQuantity(String itemId, String restaurantId, List<Option> toppings) {
+        for (OrderItem item : cartItems) {
+            if (item.getItemId().equals(itemId) &&
+                    item.getRestaurantId().equals(restaurantId) &&
+                    haveSameToppings(item.getToppings(), toppings)) {
+                return item.getQuantity();
+            }
+        }
+        return 0;
+    }
+
+    // Get quantity of specific item in cart (without considering toppings)
     public int getItemQuantity(String itemId) {
-        return cartItems.stream()
-                .filter(item -> item.getItemId().equals(itemId))
-                .mapToInt(OrderItem::getQuantity)
-                .sum();
+        int totalQuantity = 0;
+        for (OrderItem item : cartItems) {
+            if (item.getItemId().equals(itemId)) {
+                totalQuantity += item.getQuantity();
+            }
+        }
+        return totalQuantity;
     }
 
     // Create order for a specific restaurant
@@ -334,7 +470,7 @@ public class OrderItemManager {
             if (!toppingMap1.containsKey(option2.getId())) {
                 return false;
             }
-            if (toppingMap1.get(option2.getId()).getPrice() != option2.getPrice()) {
+            if (Math.abs(toppingMap1.get(option2.getId()).getPrice() - option2.getPrice()) > 0.01) {
                 return false;
             }
         }
@@ -345,7 +481,7 @@ public class OrderItemManager {
     private void notifyCartUpdated() {
         if (onCartUpdateListener != null) {
             Log.d(TAG, "notifyCartUpdated: Listener is not null, calling onCartUpdated.");
-            onCartUpdateListener.onCartUpdated(cartItems, getCartTotal());
+            onCartUpdateListener.onCartUpdated(new ArrayList<>(cartItems), getCartTotal());
         } else {
             Log.w(TAG, "notifyCartUpdated: Listener is null. Cart update not propagated.");
         }
@@ -362,6 +498,8 @@ public class OrderItemManager {
         Gson gson = new Gson();
         editor.putString(CART_ITEMS_KEY, gson.toJson(cartItems));
         editor.apply();
+
+        Log.d(TAG, "saveCartToLocal: Cart saved with " + cartItems.size() + " items");
     }
 
     private void loadCartFromLocal() {
@@ -375,6 +513,7 @@ public class OrderItemManager {
             if (loadedItems != null) {
                 cartItems.clear();
                 cartItems.addAll(loadedItems);
+                Log.d(TAG, "loadCartFromLocal: Loaded " + cartItems.size() + " items from local storage");
             }
         }
     }

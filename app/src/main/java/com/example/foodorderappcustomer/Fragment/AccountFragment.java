@@ -75,6 +75,7 @@ public class AccountFragment extends Fragment {
         editProfileButton = view.findViewById(R.id.editProfileButton);
         profileImageView = view.findViewById(R.id.profileImageView);
         addressesOption = view.findViewById(R.id.addressesOption);
+        helpOption = view.findViewById(R.id.helpOption);
         // Set up refresh listener
         swipeRefreshLayout.setOnRefreshListener(this::loadUserData);
 
@@ -88,6 +89,10 @@ public class AccountFragment extends Fragment {
         loadUserData();
         addressesOption.setOnClickListener(v -> {
             Intent intent = new Intent(getActivity(), SavedAddressesActivity.class);
+            startActivity(intent);
+        });
+        helpOption.setOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), com.example.foodorderappcustomer.HelpActivity.class);
             startActivity(intent);
         });
 

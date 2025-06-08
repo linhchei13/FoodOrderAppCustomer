@@ -25,7 +25,8 @@ public class Restaurant implements Serializable {
 
     private int imageResource;
 
-    private Map<String, OpeningHour> operatingHours;
+
+//    private Map<String, OpeningHour> openingHours;
 
     // Default constructor for Firebase
     public Restaurant() {
@@ -142,11 +143,11 @@ public class Restaurant implements Serializable {
         this.cuisineTypes = cuisineTypes;
     }
 
-    public Map<String, OpeningHour> getOperatingHours() {
-        return operatingHours;
-    }
-
-    public void setOperatingHours(Map<String, OpeningHour> operatingHours) {
-        this.operatingHours = operatingHours;
-    }
+//    public Map<String, OpeningHour> getOpeningHours() {
+//        return openingHours;
+//    }
+//
+//    public void setOpeningHours(Map<String, OpeningHour> openingHours) {
+//        this.openingHours = openingHours;
+//    }
 }

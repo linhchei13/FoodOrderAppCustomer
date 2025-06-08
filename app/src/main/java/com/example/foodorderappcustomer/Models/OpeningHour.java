@@ -1,20 +1,28 @@
 package com.example.foodorderappcustomer.Models;
 
 public class OpeningHour {
-    private String open;
-    private String close;
+    private String day;
+    private String openTime;
+    private String closeTime;
 
-    public OpeningHour() {}
-
-    public OpeningHour(String open, String close) {
-        this.open = open;
-        this.close = close;
+    public OpeningHour() {
+        // Default constructor for Firebase
     }
 
-    // Getters and setters
-    public String getOpen() { return open; }
-    public void setOpen(String open) { this.open = open; }
+    public OpeningHour(String day, String openTime, String closeTime) {
+        this.day = day;
+        this.openTime = openTime;
+        this.closeTime = closeTime;
+    }
 
-    public String getClose() { return close; }
-    public void setClose(String close) { this.close = close; }
+    // Getters and Setters
+    public String getDay() { return day; }
+    public void setDay(String day) { this.day = day; }
+
+    public String getOpenTime() { return openTime; }
+    public void setOpenTime(String openTime) { this.openTime = openTime; }
+
+    public String getCloseTime() { return closeTime; }
+    public void setCloseTime(String closeTime) { this.closeTime = closeTime; }
+
 }

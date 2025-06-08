@@ -8,11 +8,14 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 
 import com.example.foodorderappcustomer.Adapter.SavedAddressAdapter;
 import com.example.foodorderappcustomer.Models.SavedAddress;
@@ -34,7 +37,8 @@ public class SavedAddressesActivity extends AppCompatActivity {
     private RecyclerView recyclerViewSavedAddresses;
     private LinearLayout emptyState;
     private ProgressBar progressBar;
-    private ImageButton btnBack, btnAddAddress;
+    private ImageButton btnBack;
+    private TextView btnAddAddress;
     private Button btnAddNewAddress;
 
     // Firebase
@@ -45,6 +49,9 @@ public class SavedAddressesActivity extends AppCompatActivity {
     // Data and Adapter
     private List<SavedAddress> addressList;
     private SavedAddressAdapter adapter;
+
+    // ActivityResultLauncher for LocationActivity
+    private ActivityResultLauncher<Intent> locationSelectionLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +70,25 @@ public class SavedAddressesActivity extends AppCompatActivity {
             return;
         }
         userId = currentUser.getUid();
+
+        // Initialize the ActivityResultLauncher
+        locationSelectionLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    String selectedAddress = result.getData().getStringExtra("selected_address");
+                    String placeId = result.getData().getStringExtra("place_id");
+                    if (selectedAddress != null && !selectedAddress.isEmpty()) {
+                        // Return selected location to the activity that launched SavedAddressesActivity
+                        Intent resultIntent = new Intent();
+                        resultIntent.putExtra("selected_address", selectedAddress);
+                        resultIntent.putExtra("place_id", placeId);
+                        setResult(RESULT_OK, resultIntent);
+                        finish();
+                    }
+                }
+            }
+        );
 
         // Initialize UI components
         initViews();
@@ -115,8 +141,8 @@ public class SavedAddressesActivity extends AppCompatActivity {
     }
 
     private void openLocationActivity() {
-        Intent intent = new Intent(this, LocationActivity.class);
-        startActivity(intent);
+        Intent intent = new Intent(this, AddSavedAddressActivity.class);
+        locationSelectionLauncher.launch(intent); // Use the launcher
     }
 
     private void loadSavedAddresses() {

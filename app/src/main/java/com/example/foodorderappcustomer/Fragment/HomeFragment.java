@@ -23,7 +23,6 @@ import com.example.foodorderappcustomer.CartActivity;
 import com.example.foodorderappcustomer.Models.MenuItem;
 import com.example.foodorderappcustomer.Models.Review;
 import com.example.foodorderappcustomer.SavedAddressesActivity;
-import com.example.foodorderappcustomer.ShowCartActivity;
 import com.example.foodorderappcustomer.LocationActivity;
 import com.example.foodorderappcustomer.Models.Category;
 import com.example.foodorderappcustomer.Models.Promotion;

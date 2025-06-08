@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -52,8 +53,8 @@ public class CheckOutActivity extends AppCompatActivity {
     private RadioButton cashOnDeliveryRadioButton;
     private RadioButton bankTransferRadioButton;
     private RadioButton eWalletRadioButton;
-    private EditText promotionCodeEditText;
-    private Button applyPromotionButton;
+    private TextView promotionCodeEditText;
+    private ImageView applyPromotionButton;
     private TextView subtotalTextView;
     private TextView deliveryFeeTextView;
     private TextView discountTextView;
@@ -78,6 +79,26 @@ public class CheckOutActivity extends AppCompatActivity {
     private double discount = 0;
     private double total;
     private FirebaseAuth firebaseAuth;
+
+    // Thêm vào phần khai báo biến trong CheckOutActivity
+    private ActivityResultLauncher<Intent> promotionActivityLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    String promoCode = result.getData().getStringExtra("PROMO_CODE");
+                    String promoId = result.getData().getStringExtra("PROMO_ID");
+                    double discountAmount = result.getData().getDoubleExtra("DISCOUNT_AMOUNT", 0);
+
+                    // Cập nhật UI và dữ liệu
+                    promotionCodeEditText.setText(promoCode + ": Giảm " + (int) discountAmount /1000 + "K");
+                    discount = discountAmount;
+                    discountLayout.setVisibility(View.VISIBLE);
+                    calculateTotals();
+
+                    Toast.makeText(CheckOutActivity.this, "Áp dụng mã ưu đãi thành công!", Toast.LENGTH_SHORT).show();
+                }
+            }
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -154,6 +175,19 @@ public class CheckOutActivity extends AppCompatActivity {
         // Set default values
         toolbarTitle.setText("Đơn hàng của bạn");
         cashOnDeliveryRadioButton.setChecked(true);
+        // Thêm vào setupClickListeners() trong CheckOutActivity
+        promotionCodeEditText.setOnClickListener(v -> {
+            Intent intent = new Intent(CheckOutActivity.this, PromotionActivity.class);
+            intent.putExtra("RESTAURANT_ID", restaurantId);
+            intent.putExtra("ORDER_TOTAL", subtotal);
+            promotionActivityLauncher.launch(intent);
+        });
+        applyPromotionButton.setOnClickListener(v -> {
+            Intent intent = new Intent(CheckOutActivity.this, PromotionActivity.class);
+            intent.putExtra("RESTAURANT_ID", restaurantId);
+            intent.putExtra("ORDER_TOTAL", subtotal);
+            promotionActivityLauncher.launch(intent);
+        });
     }
 
     private void setupToolbar() {
@@ -168,7 +202,6 @@ public class CheckOutActivity extends AppCompatActivity {
 
         checkoutButton.setOnClickListener(v -> placeOrder());
 
-        applyPromotionButton.setOnClickListener(v -> applyPromotionCode());
     }
 
     private void setupRecyclerView() {
@@ -284,62 +317,6 @@ public class CheckOutActivity extends AppCompatActivity {
                         });
             }
         }
-    }
-    private void applyPromotionCode() {
-        String promotionCode = promotionCodeEditText.getText().toString().trim();
-
-        if (promotionCode.isEmpty()) {
-            Toast.makeText(this, "Vui lòng nhập mã ưu đãi", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Check promotion code in database
-        databaseReference.child("promotions").child(promotionCode)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.exists()) {
-                            Boolean isActive = dataSnapshot.child("isActive").getValue(Boolean.class);
-                            Double discountAmount = dataSnapshot.child("discountAmount").getValue(Double.class);
-                            Double discountPercent = dataSnapshot.child("discountPercent").getValue(Double.class);
-                            Double minOrderAmount = dataSnapshot.child("minOrderAmount").getValue(Double.class);
-
-                            if (isActive != null && isActive) {
-                                // Check minimum order amount
-                                if (minOrderAmount != null && subtotal < minOrderAmount) {
-                                    Toast.makeText(CheckOutActivity.this,
-                                            "Đơn hàng tối thiểu " + currencyFormat.format(minOrderAmount).replace("₫", "đ"),
-                                            Toast.LENGTH_SHORT).show();
-                                    return;
-                                }
-
-                                // Calculate discount
-                                if (discountAmount != null) {
-                                    discount = discountAmount;
-                                } else if (discountPercent != null) {
-                                    discount = subtotal * (discountPercent / 100);
-                                }
-
-                                // Show discount and recalculate
-                                discountLayout.setVisibility(View.VISIBLE);
-                                calculateTotals();
-
-                                Toast.makeText(CheckOutActivity.this, "Áp dụng mã ưu đãi thành công!", Toast.LENGTH_SHORT).show();
-                                applyPromotionButton.setEnabled(false);
-                                applyPromotionButton.setText("Đã áp dụng");
-                            } else {
-                                Toast.makeText(CheckOutActivity.this, "Mã ưu đãi không còn hiệu lực", Toast.LENGTH_SHORT).show();
-                            }
-                        } else {
-                            Toast.makeText(CheckOutActivity.this, "Mã ưu đãi không hợp lệ", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        Toast.makeText(CheckOutActivity.this, "Lỗi kiểm tra mã ưu đãi", Toast.LENGTH_SHORT).show();
-                    }
-                });
     }
 
     private void calculateTotals() {

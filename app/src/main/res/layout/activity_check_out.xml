@@ -215,21 +215,20 @@
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp">
 
-                        <EditText
+                        <TextView
                             android:id="@+id/promotionCodeEditText"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Nhập mã ưu đãi"
-                            android:inputType="text"
+                            android:text="Nhập mã ưu đãi"
                             android:maxLines="1" />
 
-                        <Button
+                        <ImageView
                             android:id="@+id/applyPromotionButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:text="Áp dụng" />
+                            android:src="@drawable/baseline_arrow_forward_ios_24" />
                     </LinearLayout>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>

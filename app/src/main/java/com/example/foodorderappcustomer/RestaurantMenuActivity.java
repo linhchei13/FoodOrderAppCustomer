@@ -75,7 +75,7 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
     private LinearLayout cartButtonLayout;
     private TextView cartQuantityTV;
     private ImageButton favoriteButton;
-    private ImageButton  showInfoButton;
+    private ImageButton showInfoButton;
 
     // Data
     private String restaurantId;
@@ -257,13 +257,7 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
             @Override
             public void onItemClick(MenuItem menuItem) {
                 // Check if item is in cart
-                int currentQuantity = 0;
-                for (OrderItem cartItem : orderItemManager.getCartItems()) {
-                    if (cartItem.getItemId().equals(menuItem.getId())) {
-                        currentQuantity = cartItem.getQuantity();
-                        break;
-                    }
-                }
+                int currentQuantity = orderItemManager.getItemQuantity(menuItem.getId());
 
                 // Launch FoodDetailActivity when a menu item is clicked
                 Intent intent = new Intent(RestaurantMenuActivity.this, MenuItemDetailActivity.class);
@@ -287,7 +281,7 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
                                 customizedMenuItem.getId(),
                                 restaurantId,
                                 customizedMenuItem.getName(),
-                                totalPrice / quantity, // Price per item
+                                customizedMenuItem.getPrice(), // Base price per item
                                 quantity,
                                 customizedMenuItem.getCategory(),
                                 options,
@@ -307,34 +301,20 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
                     });
                     dialog.show();
                 } else {
-                    // Check if item is already in cart
-                    OrderItem existingItem = null;
-                    for (OrderItem cartItem : orderItemManager.getCartItems()) {
-                        if (cartItem.getItemId().equals(menuItem.getId())) {
-                            existingItem = cartItem;
-                            break;
-                        }
-                    }
+                    // Simple item without options - just add 1 to cart
+                    OrderItem cartItem = new OrderItem(
+                            menuItem.getId(),
+                            restaurantId,
+                            menuItem.getName(),
+                            menuItem.getPrice(),
+                            1, // Add 1 quantity
+                            menuItem.getCategory(),
+                            new ArrayList<>(), // No options
+                            menuItem.getImageUrl()
+                    );
 
-                    if (existingItem != null) {
-                        // Update quantity if item exists
-                        orderItemManager.updateItemQuantity(existingItem, existingItem.getQuantity() + 1);
-                        Log.d(TAG, "onAddClick: Quantity updated for existing item: " + menuItem.getName());
-                    } else {
-                        // Add new item to cart
-                        OrderItem cartItem = new OrderItem(
-                                menuItem.getId(),
-                                restaurantId,
-                                menuItem.getName(),
-                                menuItem.getPrice(),
-                                1, // Default quantity
-                                menuItem.getCategory(),
-                                new ArrayList<>(), // No options
-                                menuItem.getImageUrl()
-                        );
-                        orderItemManager.addItem(cartItem);
-                        Log.d(TAG, "onAddClick: New item added directly: " + menuItem.getName());
-                    }
+                    orderItemManager.addItem(cartItem);
+                    Log.d(TAG, "onAddClick: New item added directly: " + menuItem.getName());
 
                     // Update specific item in adapter
                     menuItemAdapter.refreshItem(menuItem.getId());
@@ -348,10 +328,11 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
             public void onDecreaseClick(MenuItem menuItem, View view) {
                 Log.d(TAG, "onDecreaseClick: Attempting to decrease item: " + menuItem.getName());
 
-                // Find the existing item in cart
+                // Find the existing item in cart (first match for this menu item)
                 OrderItem existingItem = null;
                 for (OrderItem cartItem : orderItemManager.getCartItems()) {
-                    if (cartItem.getItemId().equals(menuItem.getId())) {
+                    if (cartItem.getItemId().equals(menuItem.getId()) &&
+                            cartItem.getRestaurantId().equals(restaurantId)) {
                         existingItem = cartItem;
                         break;
                     }
@@ -365,8 +346,8 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
                         orderItemManager.removeItem(existingItem);
                         Log.d(TAG, "onDecreaseClick: Item removed from cart: " + menuItem.getName());
                     } else {
-                        // Update quantity
-                        orderItemManager.updateItemQuantity(existingItem, newQuantity);
+                        // Update quantity using setItemQuantity to set exact value
+                        orderItemManager.setItemQuantity(existingItem, newQuantity);
                         Log.d(TAG, "onDecreaseClick: Quantity decreased for item: " + menuItem.getName() + " to " + newQuantity);
                     }
 
@@ -375,6 +356,8 @@ public class RestaurantMenuActivity extends AppCompatActivity implements OrderIt
 
                     // Force update cart button immediately after decreasing item
                     runOnUiThread(() -> updateCartButton());
+                } else {
+                    Log.w(TAG, "onDecreaseClick: No item found in cart for: " + menuItem.getName());
                 }
             }
         });

@@ -71,16 +71,47 @@
             android:textColor="@android:color/black"
             android:layout_marginBottom="8dp"/>
 
+
+        <LinearLayout
+            android:id="@+id/searchBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/edit_text"
+            android:paddingStart="16dp">
+
         <EditText
             android:id="@+id/addressEditText"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="48dp"
+            android:layout_weight="1"
             android:background="@drawable/edit_text"
             android:hint="Địa chỉ"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
             android:textSize="16sp"
-            android:layout_marginBottom="32dp"/>
+            android:inputType="text"/>
+
+        <ImageView
+            android:id="@+id/clearButton"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/baseline_close_24"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Vị trí hiện tại"/>
+    </LinearLayout>
+
+        <!-- ListView for Autocomplete Suggestions -->
+        <ListView
+            android:id="@+id/suggestionsListView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:background="@android:color/white"
+            android:divider="@android:color/darker_gray"
+            android:dividerHeight="1dp"
+            android:layout_marginBottom="16dp"/>
 
         <Button
             android:id="@+id/saveButton"

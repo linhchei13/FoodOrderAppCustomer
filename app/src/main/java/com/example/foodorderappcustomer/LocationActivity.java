@@ -85,6 +85,8 @@ public class LocationActivity extends AppCompatActivity {
     LinearLayout emptyState, savedAddressesSection;
     private static final int REQUEST_ADD_ADDRESS = 1;
 
+    private ActivityResultLauncher<Intent> addAddressLauncher; // New launcher for AddSavedAddressActivity
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -102,6 +104,15 @@ public class LocationActivity extends AppCompatActivity {
                 } else {
                     Toast.makeText(this, "Cần quyền truy cập vị trí để sử dụng tính năng này", Toast.LENGTH_SHORT).show();
                 }
+            }
+        );
+
+        // Initialize the AddAddressLauncher
+        addAddressLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                // On returning from AddSavedAddressActivity, onResume will handle reloading saved addresses.
+                // No specific action needed here beyond what onResume does.
             }
         );
 
@@ -357,12 +368,17 @@ public class LocationActivity extends AppCompatActivity {
                     Toast.LENGTH_SHORT).show();
                 return;
             } else {
-                // Start AddSavedAddressActivity
+                savedAddressesSection.setVisibility(View.GONE);
+                emptyState.setVisibility(View.GONE);
+                
                 Intent addAddressIntent = new Intent(this, AddSavedAddressActivity.class);
-                startActivityForResult(addAddressIntent, REQUEST_ADD_ADDRESS);
+                // Pass current location bias to AddSavedAddressActivity for relevant suggestions
+                addAddressIntent.putExtra("bias_lat", biasLat);
+                addAddressIntent.putExtra("bias_long", biasLong);
+                addAddressLauncher.launch(addAddressIntent); // Use the launcher here
             }
             
-            // Start location search for new address
+            // Start location search for new address (if applicable, after hiding saved addresses)
             suggestionsListView.setVisibility(View.VISIBLE);
             searchEditText.requestFocus();
         });
@@ -378,15 +394,27 @@ public class LocationActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // Reload addresses in case they were modified or added
+        loadSavedAddresses();
+        // Ensure saved addresses section is visible when returning to the activity
+        savedAddressesSection.setVisibility(View.VISIBLE);
+        emptyState.setVisibility(View.GONE); // Hide empty state on resume, it will be handled by loadSavedAddresses if needed
+
+        // If search EditText is empty, ensure default view is shown
+        if (searchEditText.getText().toString().isEmpty()) {
+            suggestionsListView.setVisibility(View.GONE);
+        }
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_ADD_ADDRESS && resultCode == RESULT_OK && data != null) {
-            // Start AddSavedAddressActivity with selected location data
-            Intent addAddressIntent = new Intent(this, AddSavedAddressActivity.class);
-            addAddressIntent.putExtra("place_id", data.getStringExtra("place_id"));
-            addAddressIntent.putExtra("selected_address", data.getStringExtra("selected_address"));
-            startActivityForResult(addAddressIntent, REQUEST_ADD_ADDRESS);
-        }
+        // The logic for REQUEST_ADD_ADDRESS is now handled by addAddressLauncher
+        // This method can now be left empty if no other onActivityResult logic is present,
+        // or if it's only for other request codes.
+        // If you had other request codes, they would remain here.
     }
 
     @Override

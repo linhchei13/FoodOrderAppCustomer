@@ -36,14 +36,13 @@
             android:gravity="center"
             android:layout_gravity="center_vertical" />
 
-        <ImageButton
+        <TextView
             android:id="@+id/btnAddAddress"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/baseline_add_24"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:layout_gravity="center_vertical"
-            android:contentDescription="Thêm địa chỉ" />
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Thêm địa chỉ"
+            android:textColor="@color/rebecca_purple"
+            android:textSize="14sp"/>
     </LinearLayout>
 
     <!-- RecyclerView for saved addresses -->

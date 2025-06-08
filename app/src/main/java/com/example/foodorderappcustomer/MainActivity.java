@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.menu_cart) {
             // Open cart activity
-            Intent intent = new Intent(this, ShowCartActivity.class);
+            Intent intent = new Intent(this, CartActivity.class);
             startActivity(intent);
             return true;
         }
