@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/white"
-    tools:context=".FoodDetailActivity">
+    tools:context=".MenuItemDetailActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBar"
@@ -39,6 +39,7 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
+                android:background="@android:color/transparent"
                 app:layout_collapseMode="pin"
                 app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
 
@@ -49,6 +50,16 @@
                     android:background="@drawable/circle_background"
                     android:contentDescription="Back"
                     android:src="@drawable/baseline_arrow_back_24" />
+
+                <ImageButton
+                    android:id="@+id/favoriteButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="end"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/circle_background"
+                    android:contentDescription="Favorite"
+                    android:src="@drawable/baseline_favorite_border_24" />
 
             </androidx.appcompat.widget.Toolbar>
         </com.google.android.material.appbar.CollapsingToolbarLayout>

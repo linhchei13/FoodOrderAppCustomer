@@ -3,6 +3,7 @@ package com.example.foodorderappcustomer.Models;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class Restaurant implements Serializable {
     private String id;
@@ -14,7 +15,6 @@ public class Restaurant implements Serializable {
     private int totalRatings;
     private String imageUrl;
     private double deliveryFee;
-    private int averageDeliveryTime;
     private List<String> cuisineTypes;
     private double distance;
     private String averagePrice;
@@ -24,6 +24,9 @@ public class Restaurant implements Serializable {
     private List<MenuItem> menuItems;
 
     private int imageResource;
+
+    private Map<String, OpeningHour> operatingHours;
+
     // Default constructor for Firebase
     public Restaurant() {
     }
@@ -93,7 +96,6 @@ public class Restaurant implements Serializable {
         return distance;
     }
 
-
     public String getImageUrl() {
         return imageUrl;
     }
@@ -118,14 +120,6 @@ public class Restaurant implements Serializable {
         this.deliveryFee = deliveryFee;
     }
 
-    public int getAverageDeliveryTime() {
-        return averageDeliveryTime;
-    }
-
-    public void setAverageDeliveryTime(int averageDeliveryTime) {
-        this.averageDeliveryTime = averageDeliveryTime;
-    }
-
     public String getCategory() {
         return category;
     }
@@ -146,5 +140,13 @@ public class Restaurant implements Serializable {
 
     public void setCuisineTypes(List<String> cuisineTypes) {
         this.cuisineTypes = cuisineTypes;
+    }
+
+    public Map<String, OpeningHour> getOperatingHours() {
+        return operatingHours;
+    }
+
+    public void setOperatingHours(Map<String, OpeningHour> operatingHours) {
+        this.operatingHours = operatingHours;
     }
 }

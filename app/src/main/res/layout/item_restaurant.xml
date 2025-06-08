@@ -69,7 +69,7 @@
                     android:id="@+id/ratingCountTv"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginStart="2dp"
                     android:textSize="12sp" />
 
                 <TextView
@@ -79,48 +79,28 @@
                     android:layout_marginEnd="8dp"
                     android:text="•"
                     android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/deliveryTime"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
-                    android:text="•"
-                    android:textSize="12sp" />
-
-<!--                <TextView-->
-<!--                    android:id="@+id/distance"-->
-<!--                    android:layout_width="wrap_content"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:textSize="12sp" />-->
-
-<!--                <TextView-->
-<!--                    android:layout_width="wrap_content"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:layout_marginStart="8dp"-->
-<!--                    android:layout_marginEnd="8dp"-->
-<!--                    android:text="•"-->
-<!--                    android:textSize="12sp" />-->
 
                 <TextView
                     android:id="@+id/averagePriceTV"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="12sp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:text="•"
+                    android:textSize="12sp" />
+                <TextView
+                    android:id="@+id/categoryName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp" />
+
+
 
             </LinearLayout>
-
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/categoryChipGroup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp" />
         </LinearLayout>
 
         <LinearLayout

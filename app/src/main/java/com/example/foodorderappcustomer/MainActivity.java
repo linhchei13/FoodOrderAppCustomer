@@ -15,6 +15,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
 import com.example.foodorderappcustomer.Fragment.AccountFragment;
+import com.example.foodorderappcustomer.Fragment.FavoriteFragment;
 import com.example.foodorderappcustomer.Fragment.HomeFragment;
 import com.example.foodorderappcustomer.Fragment.HistoryFragment;
 import com.example.foodorderappcustomer.util.OrderItemManager;
@@ -63,8 +64,10 @@ public class MainActivity extends AppCompatActivity {
                 replaceFragment(new HistoryFragment());
                 return true;
             }
-//            else if (itemId == R.id.messageFragment) {
-//                replaceFragment(new MessageFragment());
+            else if (itemId == R.id.favoriteFragment) {
+                replaceFragment(new FavoriteFragment());
+                return true;
+            }
              else if (itemId == R.id.accountFragment) {
                 replaceFragment(new AccountFragment());
                 return true;

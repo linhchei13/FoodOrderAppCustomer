@@ -2,10 +2,10 @@ package com.example.foodorderappcustomer;
 
 import android.app.AlertDialog;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,8 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorderappcustomer.Adapter.OrderItemAdapter;
 import com.example.foodorderappcustomer.Models.Order;
 import com.example.foodorderappcustomer.Models.OrderItem;
-import com.example.foodorderappcustomer.Models.Review;
-import com.example.foodorderappcustomer.util.ImageUploadUtils;
+import com.example.foodorderappcustomer.util.SalesManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
@@ -34,7 +33,7 @@ import java.util.Locale;
 import androidx.annotation.Nullable;
 
 public class OrderInformationActivity extends AppCompatActivity {
-    private TextView textOrderId, textOrderStatus, textOrderTime;
+    private TextView textOrderId, textOrderStatus, textOrderTime, textReceiveTime;
     private TextView textRestaurantName;
     private TextView textDeliveryAddress, textDeliveryNote;
     private TextView textPaymentMethod;
@@ -44,6 +43,7 @@ public class OrderInformationActivity extends AppCompatActivity {
     private MaterialButton buttonMarkAsCompleted;
     private MaterialButton buttonReview;
     private ImageButton backButton;
+    private LinearLayout receiveTimeLayout;
 
     private Order currentOrder;
     private DatabaseReference databaseReference;
@@ -126,6 +126,8 @@ public class OrderInformationActivity extends AppCompatActivity {
         buttonCancelOrder = findViewById(R.id.buttonCancelOrder);
         buttonMarkAsCompleted = findViewById(R.id.buttonMarkAsCompleted);
         buttonReview = findViewById(R.id.buttonReview);
+        textReceiveTime = findViewById(R.id.textReceiveTime);
+        receiveTimeLayout = findViewById(R.id.receiveTimeLayout);
 
         // Setup RecyclerView
         orderItemsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -167,7 +169,7 @@ public class OrderInformationActivity extends AppCompatActivity {
 
     private void displayOrderData() {
         // Display basic order info
-        textOrderId.setText("Đơn hàng #" + currentOrder.getId().substring(0, 8));
+        textOrderId.setText("Đơn hàng #" + currentOrder.getId());
         textOrderTime.setText(dateFormat.format(currentOrder.getOrderTime()));
         textRestaurantName.setText(currentOrder.getRestaurantName());
         textDeliveryAddress.setText(currentOrder.getAddress());
@@ -190,13 +192,15 @@ public class OrderInformationActivity extends AppCompatActivity {
                 buttonCancelOrder.setVisibility(View.VISIBLE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
                 buttonReview.setVisibility(View.GONE);
+                receiveTimeLayout.setVisibility(View.GONE);
                 break;
             case "contacted":
-                statusText = "Đang giao hàng";
+                statusText = "Đang giao";
                 statusColor = getResources().getColor(R.color.status_processing);
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.VISIBLE);
                 buttonReview.setVisibility(View.GONE);
+                receiveTimeLayout.setVisibility(View.GONE);
                 break;
             case "completed":
                 statusText = "Hoàn thành";
@@ -204,6 +208,7 @@ public class OrderInformationActivity extends AppCompatActivity {
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
                 buttonReview.setVisibility(View.VISIBLE);
+                receiveTimeLayout.setVisibility(View.VISIBLE);
                 checkExistingReview();
                 break;
             case "cancelled":
@@ -212,6 +217,15 @@ public class OrderInformationActivity extends AppCompatActivity {
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
                 buttonReview.setVisibility(View.GONE);
+                receiveTimeLayout.setVisibility(View.GONE);
+                break;
+            case "canceled":
+                statusText = "Đã hủy";
+                statusColor = getResources().getColor(R.color.status_cancelled);
+                buttonCancelOrder.setVisibility(View.GONE);
+                buttonMarkAsCompleted.setVisibility(View.GONE);
+                buttonReview.setVisibility(View.GONE);
+                receiveTimeLayout.setVisibility(View.GONE);
                 break;
             default:
                 statusText = currentOrder.getStatus();
@@ -219,6 +233,7 @@ public class OrderInformationActivity extends AppCompatActivity {
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
                 buttonReview.setVisibility(View.GONE);
+                receiveTimeLayout.setVisibility(View.GONE);
         }
         textOrderStatus.setText(statusText);
         textOrderStatus.setTextColor(statusColor);
@@ -235,7 +250,6 @@ public class OrderInformationActivity extends AppCompatActivity {
         String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
         databaseReference.child("reviews")
             .child(currentOrder.getId())
-            .child(userId)
             .get()
             .addOnSuccessListener(dataSnapshot -> {
                 if (dataSnapshot.exists()) {
@@ -248,106 +262,6 @@ public class OrderInformationActivity extends AppCompatActivity {
                 }
             });
     }
-
-//    private void submitReview() {
-//        float rating = ratingBar.getRating();
-//        String comment = editTextReview.getText().toString().trim();
-//
-//        if (rating == 0) {
-//            Toast.makeText(this, "Vui lòng chọn số sao đánh giá", Toast.LENGTH_SHORT).show();
-//            return;
-//        }
-//
-//        if (comment.isEmpty()) {
-//            Toast.makeText(this, "Vui lòng nhập đánh giá của bạn", Toast.LENGTH_SHORT).show();
-//            return;
-//        }
-//
-//        // Show loading dialog
-//        AlertDialog loadingDialog = new AlertDialog.Builder(this)
-//            .setTitle("Đang xử lý")
-//            .setMessage("Vui lòng đợi...")
-//            .setCancelable(false)
-//            .create();
-//        loadingDialog.show();
-//
-//        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-//        Review review = new Review();
-//        review.setUserId(userId);
-//        review.setOrderId(currentOrder.getId());
-//        review.setRestaurantId(currentOrder.getRestaurantId());
-//        review.setRating(rating);
-//        review.setComment(comment);
-//        review.setTimestamp(new Date());
-//
-//        // Upload images first
-//        List<String> imageUrls = new ArrayList<>();
-//        List<Uri> validImageUris = new ArrayList<>();
-//        for (Uri uri : selectedImageUris) {
-//            if (uri != null) {
-//                validImageUris.add(uri);
-//            }
-//        }
-//
-//        if (validImageUris.isEmpty()) {
-//            // No images to upload, save review directly
-//            saveReviewToDatabase(review, imageUrls, loadingDialog);
-//        } else {
-//            // Upload images
-//            uploadImages(validImageUris, 0, imageUrls, review, loadingDialog);
-//        }
-//    }
-
-    private void uploadImages(List<Uri> imageUris, int index, List<String> uploadedUrls, 
-                            Review review, AlertDialog loadingDialog) {
-        if (index >= imageUris.size()) {
-            // All images uploaded, save review
-            saveReviewToDatabase(review, uploadedUrls, loadingDialog);
-            return;
-        }
-
-        Uri imageUri = imageUris.get(index);
-        String folder = "reviews/" + currentOrder.getId();
-        
-        ImageUploadUtils.uploadImage(imageUri, folder, new ImageUploadUtils.ImageUploadCallback() {
-            @Override
-            public void onSuccess(String downloadUrl) {
-                uploadedUrls.add(downloadUrl);
-                uploadImages(imageUris, index + 1, uploadedUrls, review, loadingDialog);
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-                loadingDialog.dismiss();
-                Toast.makeText(OrderInformationActivity.this,
-                    "Lỗi khi tải ảnh lên: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onProgress(double progress) {
-                // Update progress if needed
-            }
-        });
-    }
-
-    private void saveReviewToDatabase(Review review, List<String> imageUrls, AlertDialog loadingDialog) {
-        review.setImageUrls(imageUrls);
-        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-
-        databaseReference.child("reviews")
-            .child(currentOrder.getId())
-            .setValue(review)
-            .addOnSuccessListener(aVoid -> {
-                loadingDialog.dismiss();
-                Toast.makeText(this, "Đánh giá đã được gửi thành công", Toast.LENGTH_SHORT).show();
-                finish();
-            })
-            .addOnFailureListener(e -> {
-                loadingDialog.dismiss();
-                Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            });
-    }
-
     private void showCancelConfirmationDialog() {
         new AlertDialog.Builder(this)
             .setTitle("Hủy đơn hàng")
@@ -401,6 +315,9 @@ public class OrderInformationActivity extends AppCompatActivity {
                 .create();
             loadingDialog.show();
             Date dateCompleted = new Date();
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+            String formattedDate = dateFormat.format(dateCompleted);
+            textReceiveTime.setText(formattedDate);
 
             // Update order status in Firebase
             databaseReference.child("orders").child(currentOrder.getId())
@@ -415,6 +332,8 @@ public class OrderInformationActivity extends AppCompatActivity {
                     loadingDialog.dismiss();
                     Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+            SalesManager salesManager = SalesManager.getInstance();
+            salesManager.updateSalesForOrder(currentOrder.getId());
         }
     }
 

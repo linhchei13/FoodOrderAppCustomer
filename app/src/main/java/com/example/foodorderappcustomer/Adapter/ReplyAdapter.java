@@ -11,9 +11,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.foodorderappcustomer.R;
 import com.example.foodorderappcustomer.Models.Reply;
-import com.example.foodorderappcustomer.util.ImageUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -66,7 +66,11 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
         if (senderId.equals(restaurantId)) {
             // Avatar nhà hàng
             if (restaurantAvatarUrl != null && !restaurantAvatarUrl.isEmpty()) {
-                ImageUtils.loadImage(restaurantAvatarUrl, holder.imageAvatar, R.drawable.edit_text, R.drawable.logo2);
+                Glide.with(context)
+                        .load(restaurantAvatarUrl)
+                        .placeholder(R.drawable.loading_img)
+                        .error(R.drawable.logo2)
+                        .into(holder.imageAvatar);
             }
 //            else {
 //                holder.imageAvatar.setImageResource(R.drawable.avatar_default);
@@ -75,7 +79,12 @@ public class ReplyAdapter extends RecyclerView.Adapter<ReplyAdapter.ReplyViewHol
             // Avatar user
             String avatarUrl = avatarUrls.get(senderId);
             if (avatarUrl != null && !avatarUrl.isEmpty()) {
-                ImageUtils.loadImage(avatarUrl, holder.imageAvatar, R.drawable.edit_text, R.drawable.logo2);
+                // Sử dụng thư viện Glide để tải và hiển thị ảnh
+                Glide.with(context)
+                        .load(avatarUrl)
+                        .placeholder(R.drawable.loading_img)
+                        .error(R.drawable.logo2)
+                        .into(holder.imageAvatar);
             }
 //            else {
 //                holder.imageAvatar.setImageResource(R.drawable.avatar_default);

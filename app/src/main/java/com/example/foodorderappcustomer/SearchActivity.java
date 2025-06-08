@@ -335,13 +335,7 @@ public class SearchActivity extends AppCompatActivity {
         if (checkedId == R.id.rbCheapest) {
             Collections.sort(filteredList, Comparator.comparing(Restaurant::getAveragePrice));
         } else if (checkedId == R.id.rbBestSeller) {
-            // Sort by popularity (you may need to add a popularity field to Restaurant model)
-            // For now, just using delivery time as an example
-            Collections.sort(filteredList, Comparator.comparingInt(Restaurant::getAverageDeliveryTime));
-        } else if (checkedId == R.id.rbNearest) {
-            // Sort by distance (you may need to calculate distance based on user location)
-            // For now, using delivery time as proxy
-            Collections.sort(filteredList, Comparator.comparingInt(Restaurant::getAverageDeliveryTime));
+
         } else if (checkedId == R.id.rbBestRating) {
             Collections.sort(filteredList, (r1, r2) -> Double.compare(r2.getRating(), r1.getRating()));
         }

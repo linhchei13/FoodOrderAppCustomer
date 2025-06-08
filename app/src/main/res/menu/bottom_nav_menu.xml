@@ -11,16 +11,12 @@
         android:icon="@drawable/baseline_list_alt_24"
         android:title="Đơn hàng"
         />
-<!--    <item-->
-<!--        android:id="@+id/messageFragment"-->
-<!--        android:icon="@drawable/baseline_message_24"-->
-<!--        android:title="Tin nhắn"-->
-<!--        />-->
-<!--    <item-->
-<!--        android:id="@+id/notificationFragment"-->
-<!--        android:icon="@drawable/"-->
-<!--        android:title="Yêu thích"-->
-<!--        />-->
+    <item
+        android:id="@+id/favoriteFragment"
+        android:icon="@drawable/baseline_favorite_24"
+        android:title="Yêu thích"
+        />
+
     <item
         android:id="@+id/accountFragment"
         android:icon="@drawable/baseline_person_24"

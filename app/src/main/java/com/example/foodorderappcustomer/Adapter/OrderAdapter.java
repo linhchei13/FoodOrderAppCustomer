@@ -91,7 +91,7 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.OrderViewHol
             int statusColor;
             switch (order.getStatus()) {
                 case "pending":
-                    statusText = "Đang chờ xử lý";
+                    statusText = "Đang chờ xác nhận";
                     statusColor = itemView.getContext().getResources().getColor(R.color.status_pending);
                     break;
                 case "processing":

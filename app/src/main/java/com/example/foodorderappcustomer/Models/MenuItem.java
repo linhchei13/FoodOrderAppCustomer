@@ -7,6 +7,8 @@ public class MenuItem {
     private String id;
     private String name;
     private double price;
+
+    private int  preparationTime;
     private String category;
     private float rating;
     private String imageUrl;
@@ -14,12 +16,13 @@ public class MenuItem {
     private String restaurantId;
     private int sales;
     private int likes;
-    private List<Option> availableOptions;
+    private List<OptionGroup> availableOptions;
 
     public MenuItem() {
 
     }
-      public MenuItem(String id, String name, double price,
+
+    public MenuItem(String id, String name, double price,
                     String category, float rating, String description, String imageUrl, int sales) {
         this.id = id;
         this.name = name;
@@ -84,7 +87,14 @@ public class MenuItem {
     }    public void setDescription(String description) {
         this.description = description;
     }
-    
+
+    public int getPreparationTime() {
+        return preparationTime;
+    }
+
+    public void setPreparationTime (int preparationTime) {
+        this.preparationTime = preparationTime;
+    }
     public int getSales() {
         return sales;
     }
@@ -105,19 +115,13 @@ public class MenuItem {
         return sales + "k đã bán - " + likes + " lượt thích";
     }
 
-    public List<Option> getAvailableOptions() {
+    public List<OptionGroup> getAvailableOptions() {
         return availableOptions;
     }
 
-    public void setAvailableOptions(List<Option> availableOptions) {
+    public void setAvailableOptions(List<OptionGroup> availableOptions) {
         this.availableOptions = availableOptions;
     }
 
-    public void addOption(Option option) {
-        if (this.availableOptions == null) {
-            this.availableOptions = new ArrayList<>();
-        }
-        this.availableOptions.add(option);
-    }
 
 }

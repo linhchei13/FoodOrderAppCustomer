@@ -11,11 +11,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.foodorderappcustomer.Models.Restaurant;
 import com.example.foodorderappcustomer.R;
 import com.example.foodorderappcustomer.RestaurantMenuActivity;
-import com.example.foodorderappcustomer.util.ImageUtils;
-import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
 import java.text.NumberFormat;
@@ -69,7 +68,7 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
         private TextView restaurantName;
         private TextView restaurantAddress;
         private TextView ratingValue;
-        private TextView deliveryTime;
+        private TextView categoryName;
         private TextView distance;
 
         private TextView averagePriceTV;
@@ -82,10 +81,9 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
             restaurantName = itemView.findViewById(R.id.restaurantName);
             restaurantAddress = itemView.findViewById(R.id.restaurantAddress);
             ratingValue = itemView.findViewById(R.id.ratingValue);
-            deliveryTime = itemView.findViewById(R.id.deliveryTime);
+            categoryName = itemView.findViewById(R.id.categoryName);
             averagePriceTV = itemView.findViewById(R.id.averagePriceTV);
             ratingCountTv = itemView.findViewById(R.id.ratingCountTv);
-            categoryChipGroup = itemView.findViewById(R.id.categoryChipGroup);
         }
 
         public void bind(Restaurant restaurant) {
@@ -96,40 +94,14 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
             float rating = (float) restaurant.getRating();
             ratingValue.setText(String.format("%.1f", rating));
             ratingCountTv.setText(String.format("(%d)", restaurant.getTotalRatings()));
+            categoryName.setText(restaurant.getCategory());
 
             averagePriceTV.setText("Khoảng " + restaurant.getAveragePrice() + "K");
-            
-            // Set delivery time
-            int avgTime = restaurant.getAverageDeliveryTime();
-            if (avgTime > 0) {
-                deliveryTime.setText(String.format("%d phút", avgTime));
-            } else {
-                deliveryTime.setText("30 phút");
-            }
-            
-            // Set distance (placeholder for now)
-//            distance.setText(String.format("%s", currencyFormat.format(restaurant.getDeliveryFee())));
-            
-            // Set restaurant image
-            ImageUtils.loadImage(restaurant.getImageUrl(), restaurantImage, R.drawable.bg, R.drawable.logo2);
-
-            
-            // Add cuisine type chips
-            categoryChipGroup.removeAllViews();
-            List<String> cuisineTypes = restaurant.getCuisineTypes();
-            if (cuisineTypes != null && !cuisineTypes.isEmpty()) {
-                // Only add up to 2 cuisine types to avoid overcrowding
-                int maxChips = Math.min(cuisineTypes.size(), 2);
-                for (int i = 0; i < maxChips; i++) {
-                    Chip chip = new Chip(context);
-                    chip.setText(cuisineTypes.get(i));
-                    chip.setChipBackgroundColorResource(android.R.color.transparent);
-                    chip.setChipStrokeWidth(1f);
-                    chip.setChipStrokeColorResource(android.R.color.darker_gray);
-                    chip.setTextSize(12);
-                    categoryChipGroup.addView(chip);
-                }
-            }
+            Glide.with(context)
+                    .load(restaurant.getImageUrl())
+                    .placeholder(R.drawable.loading_img)
+                    .error(R.drawable.logo2)
+                    .into(restaurantImage);
         }
     }
 }

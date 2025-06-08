@@ -1,22 +1,22 @@
 package com.example.foodorderappcustomer.Adapter;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.ImageButton;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.foodorderappcustomer.Models.MenuItem;
 import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.R;
 import com.example.foodorderappcustomer.util.OrderItemManager;
-import com.example.foodorderappcustomer.util.ImageUtils;
 
 import java.text.NumberFormat;
 import java.util.List;
@@ -26,13 +26,14 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
 
     private List<MenuItem> menuItems;
     private OnItemClickListener listener;
-    private NumberFormat currencyFormat;
+    private static NumberFormat currencyFormat;
     private OrderItemManager orderItemManager;
     private Context context;
 
     public interface OnItemClickListener {
         void onItemClick(MenuItem menuItem);
         void onAddClick(MenuItem menuItem, View view);
+        void onDecreaseClick(MenuItem menuItem, View view);
     }
 
     public MenuItemAdapter(Context context, List<MenuItem> menuItems) {
@@ -40,7 +41,7 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
         this.menuItems = menuItems;
         this.currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
         this.orderItemManager = OrderItemManager.getInstance(context);
-        
+
         // Listen for cart updates
         orderItemManager.setOnCartUpdateListener((cartItems, total) -> {
             notifyDataSetChanged(); // Refresh all items when cart changes
@@ -54,6 +55,16 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
     public void updateData(List<MenuItem> newMenuItems) {
         this.menuItems = newMenuItems;
         notifyDataSetChanged();
+    }
+
+    // Add method to update specific item quantity
+    public void updateItemQuantity(String itemId, int quantity) {
+        for (int i = 0; i < menuItems.size(); i++) {
+            if (menuItems.get(i).getId().equals(itemId)) {
+                notifyItemChanged(i);
+                break;
+            }
+        }
     }
 
     private OrderItem findItemInCart(MenuItem menuItem) {
@@ -87,8 +98,7 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
         private ImageView menuItemImg;
         private TextView itemName;
         private TextView itemPrice;
-        private TextView itemDescription;
-        private View quantityControls;
+        private TextView sales;
         private ImageButton decreaseButton;
         private TextView quantityTextView;
         private ImageButton increaseButton;
@@ -98,7 +108,7 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
             menuItemImg = itemView.findViewById(R.id.menuItemImg);
             itemName = itemView.findViewById(R.id.itemName);
             itemPrice = itemView.findViewById(R.id.itemPrice);
-            quantityControls = itemView.findViewById(R.id.quantityControls);
+            sales = itemView.findViewById(R.id.salesTV);
             decreaseButton = itemView.findViewById(R.id.decreaseButton);
             quantityTextView = itemView.findViewById(R.id.quantityTextView);
             increaseButton = itemView.findViewById(R.id.increaseButton);
@@ -107,82 +117,108 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
         public void bind(final MenuItem menuItem, final OnItemClickListener listener, OrderItemManager orderItemManager) {
             // Set name
             itemName.setText(menuItem.getName());
+            sales.setText(String.valueOf(menuItem.getSales()));
 
             // Format price
-            NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
             String formattedPrice = currencyFormat.format(menuItem.getPrice()).replace("₫", "đ");
             itemPrice.setText(formattedPrice);
-            
-            // Set description
-//            itemDescription.setText(menuItem.getDescription());
-//
-//            // Set rating
-//            if (menuItem.getRating() > 0) {
-//                menuItemRating.setRating(menuItem.getRating());
-//                ratingText.setText(String.format("%.1f", menuItem.getRating()));
-//            } else {
-//                menuItemRating.setRating(0);
-//                ratingText.setText("New");
-//            }
 
-            // Set image - try to load from Firebase first if image URL is available
+            // Load image safely
             if (menuItem.getImageUrl() != null && !menuItem.getImageUrl().isEmpty()) {
-                // Use ImageUtils to load the image
-                ImageUtils.loadImage(
-                    menuItem.getImageUrl(),
-                    menuItemImg,
-                    R.drawable.bg,
-                    R.drawable.logo2
-                );
-            }
-
-            // Check if item is in cart
-            OrderItem curentItem = null;
-            for (OrderItem item : orderItemManager.getCartItems()) {
-                if (item.getItemId().equals(menuItem.getId())) {
-                    curentItem = item;
-                    break;
-                }
-            }
-
-            // Show/hide quantity controls based on cart status
-            if (curentItem != null) {
-                final OrderItem cartItem = curentItem;
-                decreaseButton.setVisibility(View.VISIBLE);
-                quantityTextView.setText(String.valueOf(cartItem.getQuantity()));
-                quantityTextView.setVisibility(View.VISIBLE);
-
-                // Set up quantity control listeners
-                decreaseButton.setOnClickListener(v -> {
-                    int newQuantity = cartItem.getQuantity() - 1;
-                    if (newQuantity <= 0) {
-                        orderItemManager.removeItem(cartItem);
-                    } else {
-                        orderItemManager.updateItemQuantity(cartItem, newQuantity);
+                try {
+                    // Sử dụng context của itemView thay vì activity context
+                    Context context = itemView.getContext();
+                    if (context != null) {
+                        Glide.with(context)
+                                .load(menuItem.getImageUrl())
+                                .placeholder(R.drawable.loading_img)
+                                .error(R.drawable.logo2)
+                                .into(menuItemImg);
                     }
-                });
-
-                increaseButton.setOnClickListener(v -> {
-                    orderItemManager.updateItemQuantity(cartItem, cartItem.getQuantity() + 1);
-                });
+                } catch (Exception e) {
+                    Log.e("MenuItemAdapter", "Error loading image: " + e.getMessage());
+                    menuItemImg.setImageResource(R.drawable.logo2);
+                }
             } else {
-                decreaseButton.setVisibility(View.GONE);
-                quantityTextView.setVisibility(View.GONE);
+                menuItemImg.setImageResource(R.drawable.logo2);
             }
 
-            // Set click listeners
+            // Always update quantity UI when binding
+            updateQuantityUI(menuItem, orderItemManager);
+
+            // Set up click listeners
             itemView.setOnClickListener(v -> {
                 if (listener != null) {
                     listener.onItemClick(menuItem);
                 }
             });
 
+            // Set up increase button click listener
             increaseButton.setOnClickListener(v -> {
                 if (listener != null) {
                     listener.onAddClick(menuItem, v);
                 }
             });
+
+            // Set up decrease button click listener
+            decreaseButton.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onDecreaseClick(menuItem, v);
+                }
+            });
         }
 
+        private void updateQuantityUI(MenuItem menuItem, OrderItemManager orderItemManager) {
+            // Check if item is in cart
+            OrderItem currentItem = null;
+            for (OrderItem item : orderItemManager.getCartItems()) {
+                if (item.getItemId().equals(menuItem.getId())) {
+                    currentItem = item;
+                    break;
+                }
+            }
+
+            // Show/hide quantity controls based on cart status
+            if (currentItem != null && currentItem.getQuantity() > 0) {
+                // Item is in cart, show quantity controls
+                decreaseButton.setVisibility(View.VISIBLE);
+                quantityTextView.setVisibility(View.VISIBLE);
+                quantityTextView.setText(String.valueOf(currentItem.getQuantity()));
+
+                // Add animation when quantity changes
+                animateQuantityChange(quantityTextView);
+            } else {
+                // Item is not in cart, hide quantity controls
+                decreaseButton.setVisibility(View.GONE);
+                quantityTextView.setVisibility(View.GONE);
+            }
+        }
+
+        private void animateQuantityChange(TextView textView) {
+            // Simple scale animation for quantity change
+            android.view.animation.ScaleAnimation scaleAnimation = new android.view.animation.ScaleAnimation(
+                    0.8f, 1.0f, // Start and end X scale
+                    0.8f, 1.0f, // Start and end Y scale
+                    android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f, // Pivot X
+                    android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f  // Pivot Y
+            );
+            scaleAnimation.setDuration(200);
+            textView.startAnimation(scaleAnimation);
+        }
+    }
+
+    // Method to refresh specific item when quantity changes
+    public void refreshItem(String itemId) {
+        for (int i = 0; i < menuItems.size(); i++) {
+            if (menuItems.get(i).getId().equals(itemId)) {
+                notifyItemChanged(i);
+                break;
+            }
+        }
+    }
+
+    // Method to refresh all items
+    public void refreshAllItems() {
+        notifyDataSetChanged();
     }
 }

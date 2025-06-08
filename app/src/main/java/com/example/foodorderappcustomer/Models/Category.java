@@ -9,6 +9,10 @@ public class Category {
     private String imageUrl;
     private int imageResource;
 
+    public Category() {
+
+    }
+
     public Category(String id, String name, String description) {
         this.id = id;
         this.name = name;

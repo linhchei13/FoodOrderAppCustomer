@@ -2,6 +2,7 @@ package com.example.foodorderappcustomer.Adapter;
 
 import android.content.Context;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,11 +15,11 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.foodorderappcustomer.Models.Reply;
 import com.example.foodorderappcustomer.Models.Review;
 import com.example.foodorderappcustomer.Models.User;
 import com.example.foodorderappcustomer.R;
-import com.example.foodorderappcustomer.util.ImageUtils;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -55,6 +56,35 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
         this.replyClickListener = replyClickListener;
     }
 
+    private void loadOrderItem(String orderId, OrderItemCallback callback) {
+        final List<String> itemNames = new ArrayList<>();
+
+        DatabaseReference orderRef = FirebaseDatabase.getInstance().getReference().child("orders");
+        orderRef.child(orderId).child("items").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                itemNames.clear();
+                for (DataSnapshot snap : snapshot.getChildren()) {
+                    String itemName = snap.child("itemName").getValue(String.class);
+                    if (itemName != null) {
+                        itemNames.add(itemName);
+                    }
+                }
+                callback.onItemNamesLoaded(String.join(", ", itemNames));
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e("ReviewAdapter", "Failed to load order items: " + error.getMessage());
+                callback.onItemNamesLoaded("Không có món ăn"); // Provide a fallback
+            }
+        });
+    }
+
+    // Interface callback để nhận dữ liệu món ăn
+    private interface OrderItemCallback {
+        void onItemNamesLoaded(String itemNames);
+    }
 
     @NonNull
     @Override
@@ -72,6 +102,11 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
 
         // Set comment
         holder.textComment.setText(review.getComment());
+        
+        // Load and set order item names asynchronously
+        loadOrderItem(review.getOrderId(), itemNames -> {
+            holder.orderItem.setText("Đã đặt: " + itemNames);
+        });
 
         // Set timestamp
         Date timestamp = review.getTimestamp();
@@ -86,9 +121,13 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
         User user = userMap.get(review.getUserId());
         if (user != null) {
             holder.textUserName.setText(user.getFullName());
-            ImageUtils.loadImage(user.getProfileImageUrl(), holder.imageAvatar, R.drawable.logo2, R.drawable.logo2);
-        } else {
-            holder.textUserName.setText("Người dùng ẩn danh");
+            Glide.with(context)
+                    .load(user.getProfileImageUrl())
+                    .placeholder(R.drawable.loading_img)
+                    .error(R.drawable.logo2)
+                    .into(holder.imageAvatar);
+        }   else {
+            holder.textUserName.setText("any");
             holder.imageAvatar.setImageResource(android.R.drawable.sym_def_app_icon);
         }
 
@@ -109,7 +148,7 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
             }
         });
 
-        setupRepliesRecyclerView(holder.recyclerViewReplies, review);
+        setupRepliesRecyclerView(holder.recyclerViewReplies, holder.btnReply, review);
 
 
     }
@@ -119,9 +158,11 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
         return reviewList.size();
     }
 
+
+
     public static class ReviewViewHolder extends RecyclerView.ViewHolder {
         ImageView imageAvatar;
-        TextView textUserName, textComment, textTimestamp;
+        TextView textUserName, textComment, textTimestamp, orderItem;
         RatingBar ratingBar;
         RecyclerView recyclerViewImages;
         RecyclerView recyclerViewReplies;
@@ -137,6 +178,7 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
             textComment = itemView.findViewById(R.id.textComment);
             textTimestamp = itemView.findViewById(R.id.textTimestamp);
             ratingBar = itemView.findViewById(R.id.ratingBar);
+            orderItem = itemView.findViewById(R.id.orderItem);
 
             recyclerViewReplies = itemView.findViewById(R.id.recyclerViewReplies);
             btnReply = itemView.findViewById(R.id.btnReply);
@@ -147,9 +189,9 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
     }
 
 
-    private void loadUserDataForReplies(List<Reply> replyList, ReplyAdapterReplyCallback callback) {
-        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
-        usersRef.addListenerForSingleValueEvent(new ValueEventListener() {
+    private void loadRestaurantDataForReplies(List<Reply> replyList, ReplyAdapterReplyCallback callback) {
+        DatabaseReference restaurantsRef = FirebaseDatabase.getInstance().getReference("restaurants");
+        restaurantsRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 Map<String, String> userNames = new HashMap<>();
@@ -157,10 +199,10 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
 
                 for (DataSnapshot userSnapshot : snapshot.getChildren()) {
                     String userId = userSnapshot.getKey();
-                    String fullName = userSnapshot.child("fullName").getValue(String.class);
-                    String avatar = userSnapshot.child("profileImageUrl").getValue(String.class);
+                    String fullName = userSnapshot.child("name").getValue(String.class);
+                    String avatar = userSnapshot.child("imageUrl").getValue(String.class);
                     if (userId != null) {
-                        userNames.put(userId, fullName != null ? fullName : "Người dùng");
+                        userNames.put(userId, fullName != null ? fullName : "Nha hang");
                         avatarUrls.put(userId, avatar != null ? avatar : "");
                     }
                 }
@@ -180,17 +222,19 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
         void onUserDataLoaded(Map<String, String> userNames, Map<String, String> avatarUrls);
     }
 
-    private void loadRestaurantData(String restaurantId, RestaurantDataCallback callback) {
-        DatabaseReference restaurantRef = FirebaseDatabase.getInstance().getReference("restaurants").child(restaurantId);
-        restaurantRef.addListenerForSingleValueEvent(new ValueEventListener() {
+    private void loadUserData(String userID, RestaurantDataCallback callback) {
+        DatabaseReference restaurantsRef = FirebaseDatabase.getInstance().getReference("users").child(userID);
+        restaurantsRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists()) {
-                    String name = snapshot.child("name").getValue(String.class);
-                    String avatarUrl = snapshot.child("imageUrl").getValue(String.class); // giả sử trường avatarUrl
+                    String firstName = snapshot.child("firstName").getValue(String.class);
+                    String lastName = snapshot.child("lastName").getValue(String.class);
+                    String name = firstName + " " + lastName;
+                    String avatarUrl = snapshot.child("profileImageUrl").getValue(String.class);
                     callback.onDataLoaded(name != null ? name : "Nhà hàng", avatarUrl != null ? avatarUrl : "");
                 } else {
-                    callback.onDataLoaded("Nhà hàng", ""); // dữ liệu mặc định nếu không có
+                    callback.onDataLoaded("Nhà hàng", ""); // default data if not found
                 }
             }
 
@@ -205,16 +249,18 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
         void onDataLoaded(String restaurantName, String avatarUrl);
     }
 
-    private void setupRepliesRecyclerView(RecyclerView recyclerViewReplies, Review review) {
+    private void setupRepliesRecyclerView(RecyclerView recyclerViewReplies, Button btnReply, Review review) {
         if (review.getReplies() == null || review.getReplies().isEmpty()) {
             recyclerViewReplies.setVisibility(View.GONE);
+            btnReply.setVisibility(View.GONE);
             return;
         }
 
         List<Reply> replyList = new ArrayList<>(review.getReplies().values());
+        btnReply.setVisibility(View.VISIBLE);
 
-        loadRestaurantData(restaurantId, (restName, restAvatar) -> {
-            loadUserDataForReplies(replyList, (userNames, avatarUrls) -> {
+        loadUserData(restaurantId, (restName, restAvatar) -> {
+            loadRestaurantDataForReplies(replyList, (userNames, avatarUrls) -> {
                 ReplyAdapter replyAdapter = new ReplyAdapter(
                         context,
                         replyList,

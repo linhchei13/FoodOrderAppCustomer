@@ -9,10 +9,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.foodorderappcustomer.Models.CartItem;
 import com.example.foodorderappcustomer.Models.OrderItem;
 import com.example.foodorderappcustomer.R;
-import com.example.foodorderappcustomer.util.ImageUtils;
 
 import java.util.List;
 
@@ -72,8 +72,12 @@ public class OrderItemAdapter extends RecyclerView.Adapter<OrderItemAdapter.Orde
         public void bind(OrderItem item) {
             textItemQuantity.setText(item.getQuantity() + "x");
             textItemName.setText(item.getItemName());
-            textItemPrice.setText(String.format("%,.0f đ", item.getItemPrice()));
-            ImageUtils.loadImage(item.getImageUrl(),orderItemImage , R.drawable.logo2, R.drawable.logo2);
+            textItemPrice.setText(String.format("%,.0f đ", item.getItemPrice() * item.getQuantity()));
+            Glide.with(itemView.getContext())
+                    .load(item.getImageUrl())
+                    .placeholder(R.drawable.loading_img)
+                    .error(R.drawable.logo2)
+                    .into(orderItemImage);
         }
     }
 } 

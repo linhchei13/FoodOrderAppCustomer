@@ -9,12 +9,13 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.foodorderappcustomer.Models.CartItem;
-import com.example.foodorderappcustomer.OrderActivity;
+import com.example.foodorderappcustomer.CheckOutActivity;
 import com.example.foodorderappcustomer.R;
-import com.example.foodorderappcustomer.util.ImageUtils;
 
 import java.text.NumberFormat;
 import java.util.List;
@@ -49,7 +50,7 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartIt
     public CartItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         context = parent.getContext();
         View view = LayoutInflater.from(parent.getContext())
-            .inflate(R.layout.item_cart, parent, false);
+                .inflate(R.layout.item_cart_restaurant, parent, false);
         return new CartItemViewHolder(view);
     }
 
@@ -57,12 +58,11 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartIt
     public void onBindViewHolder(@NonNull CartItemViewHolder holder, int position) {
         CartItem cartItem = cartItems.get(position);
         holder.bind(cartItem);
+
         holder.itemView.setOnClickListener(v -> {
-            listener.onCartItemClick(cartItems.get(position));
-            Intent intent = new Intent(context, OrderActivity.class);
-            intent.putExtra("RESTAURANT_ID", cartItems.get(position).getRestaurantId());
-            intent.putExtra("RESTAURANT_NAME", cartItems.get(position).getRestaurantName());
-            context.startActivity(intent);
+            if (listener != null) {
+                listener.onCartItemClick(cartItem);
+            }
         });
     }
 
@@ -74,50 +74,48 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartIt
     class CartItemViewHolder extends RecyclerView.ViewHolder {
         private final ImageView restaurantImageView;
         private final TextView restaurantNameTextView;
-        private final TextView totalPriceTextView;
+        private final TextView addressTextView;
         private final TextView itemCountTextView;
+        private final TextView distanceTextView;
 
         public CartItemViewHolder(@NonNull View itemView) {
             super(itemView);
-            restaurantImageView = itemView.findViewById(R.id.foodImageView);
-            restaurantNameTextView = itemView.findViewById(R.id.foodName);
-            totalPriceTextView = itemView.findViewById(R.id.deliveryTime);
-            itemCountTextView = itemView.findViewById(R.id.quantity);
-
-//            itemView.setOnClickListener(v -> {
-//                int position = getAdapterPosition();
-//                if (position != RecyclerView.NO_POSITION && listener != null) {
-//                    listener.onCartItemClick(cartItems.get(position));
-//                    Intent intent = new Intent(itemView.getContext(), OrderActivity.class);
-//                    intent.putExtra("RESTAURANT_ID", cartItems.get(position).getRestaurantId());
-//                    intent.putExtra("RESTAURANT_NAME", cartItems.get(position).getRestaurantName());
-//                    itemView.getContext().startActivity(intent);
-//                }
-//            });
+            restaurantImageView = itemView.findViewById(R.id.restaurantImageView);
+            restaurantNameTextView = itemView.findViewById(R.id.restaurantNameTextView);
+            addressTextView = itemView.findViewById(R.id.addressTextView);
+            itemCountTextView = itemView.findViewById(R.id.itemCountTextView);
+            distanceTextView = itemView.findViewById(R.id.distanceTextView);
         }
 
         public void bind(CartItem cartItem) {
-            // Set restaurant name
+            // Set restaurant name and address
             restaurantNameTextView.setText(cartItem.getRestaurantName());
 
-            // Set total price
-            String formattedPrice = currencyFormat.format(cartItem.getTotalPrice()).replace("₫", "đ");
-            totalPriceTextView.setText(formattedPrice);
+            if (cartItem.getAddress() != null && !cartItem.getAddress().isEmpty()) {
+                addressTextView.setText(cartItem.getAddress());
+                addressTextView.setVisibility(View.VISIBLE);
+            } else {
+                addressTextView.setVisibility(View.GONE);
+            }
 
-            // Set item count
-            itemCountTextView.setText(String.valueOf(cartItem.getTotalQuantity()));
+            // Set item count and distance
+            itemCountTextView.setText(cartItem.getTotalQuantity() + " món");
+            distanceTextView.setText(cartItem.getFormattedDistance());
 
             // Load restaurant image
             if (cartItem.getRestaurantImage() != null && !cartItem.getRestaurantImage().isEmpty()) {
-                ImageUtils.loadImage(
-                    cartItem.getRestaurantImage(),
-                    restaurantImageView,
-                    R.drawable.ic_restaurant,
-                    R.drawable.ic_restaurant
-                );
+                try {
+                    Glide.with(context)
+                            .load(cartItem.getRestaurantImage())
+                            .placeholder(R.drawable.loading_img)
+                            .error(R.drawable.logo2)
+                            .into(restaurantImageView);
+                } catch (Exception e) {
+                    restaurantImageView.setImageResource(R.drawable.logo2);
+                }
             } else {
-                restaurantImageView.setImageResource(R.drawable.ic_restaurant);
+                restaurantImageView.setImageResource(R.drawable.logo2);
             }
         }
     }
-} 
+}

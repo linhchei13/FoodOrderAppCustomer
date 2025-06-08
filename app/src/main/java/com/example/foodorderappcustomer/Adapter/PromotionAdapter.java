@@ -1,6 +1,7 @@
 package com.example.foodorderappcustomer.Adapter;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,8 +11,13 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.foodorderappcustomer.Models.Promotion;
 import com.example.foodorderappcustomer.R;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -68,9 +74,11 @@ public class PromotionAdapter extends RecyclerView.Adapter<PromotionAdapter.Prom
         private TextView promotionDescription;
         private TextView promotionValidity;
         private SimpleDateFormat dateFormat;
+        private Context context;
 
         public PromotionViewHolder(@NonNull View itemView) {
             super(itemView);
+            context = itemView.getContext();
             promotionImage = itemView.findViewById(R.id.promotionImage);
             promotionCode = itemView.findViewById(R.id.promotionCode);
             promotionDescription = itemView.findViewById(R.id.promotionDescription);
@@ -86,12 +94,49 @@ public class PromotionAdapter extends RecyclerView.Adapter<PromotionAdapter.Prom
             promotionDescription.setText(promotion.getDescription());
             
             // Format and set validity date
-            String validUntil = "Có hiệu lực đến" + (promotion.getEndDate());
+            String validUntil = "Có hiệu lực đến " + (promotion.getEndDate());
             promotionValidity.setText(validUntil);
+            Log.d("PromotionAdapter", "restaurantId: " + promotion.getRestaurantId());
             
-            // Set image (temporarily using a placeholder)
-            // In a real app, you would use an image loading library like Glide or Picasso
-            promotionImage.setImageResource(R.drawable.logo2);
+            // Load restaurant image
+            if (promotion.getRestaurantId() != null && !promotion.getRestaurantId().isEmpty()) {
+                FirebaseDatabase.getInstance().getReference("restaurants")
+                    .child(promotion.getRestaurantId())
+                    .child("imageUrl")
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                            if (snapshot.exists()) {
+                                String imageUrl = snapshot.getValue(String.class);
+                                Log.d("PromotionAdapter", "imageUrl: " + imageUrl);
+                                if (imageUrl != null && !imageUrl.isEmpty()) {
+                                    Glide.with(context)
+                                        .load(imageUrl)
+                                        .placeholder(R.drawable.loading_img)
+                                        .error(R.drawable.logo2)
+                                        .into(promotionImage);
+                                } else {
+                                    promotionImage.setImageResource(R.drawable.logo2);
+                                    Log.d("PromotionAdapter", "Error loading restaurant image: ");
+                                }
+                            } else {
+                                promotionImage.setImageResource(R.drawable.logo2);
+                                Log.d("PromotionAdapter", "Error loading restaurant image: ");
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            // Handle error
+                            promotionImage.setImageResource(R.drawable.logo2);
+                            Log.e("PromotionAdapter", "Error loading restaurant image: " + error.getMessage());
+                        }
+                    });
+            } else {
+                promotionImage.setImageResource(R.drawable.logo2);
+                Log.d("PromotionAdapter", "Error loading restaurant image: ");
+            }
         }
         
         private String formatDate(Date date) {

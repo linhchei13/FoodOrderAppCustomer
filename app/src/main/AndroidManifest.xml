@@ -26,7 +26,7 @@
             android:name=".LocationActivity"
             android:exported="false" />
         <activity
-            android:name=".OrderActivity"
+            android:name=".CheckOutActivity"
             android:exported="false" />
         <activity
             android:name=".EditProfileActivity"
@@ -35,7 +35,7 @@
             android:name=".CategoryMenuActivity"
             android:exported="false" />
         <activity
-            android:name=".FoodDetailActivity"
+            android:name=".MenuItemDetailActivity"
             android:exported="false" />
         <activity
             android:name=".RestaurantMenuActivity"
@@ -74,6 +74,7 @@
         </activity>
         <activity android:name=".SavedAddressesActivity"/>
         <activity android:name=".AddSavedAddressActivity"/>
+        <activity android:name=".RestaurantInformationActivity"/>
     </application>
 
 </manifest>

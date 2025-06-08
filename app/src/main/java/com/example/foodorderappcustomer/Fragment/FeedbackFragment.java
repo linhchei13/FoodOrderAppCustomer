@@ -107,14 +107,14 @@ public class FeedbackFragment extends Fragment {
         userMap.clear();
 
         // Tạo danh sách userId duy nhất từ reviewList
-        Set<String> restaurantIDs = new HashSet<>();
+        Set<String> userIDs = new HashSet<>();
         for (Review review : reviewList) {
-            if (review.getRestaurantId() != null) {
-                restaurantIDs.add(review.getRestaurantId());
+            if (review.getUserId() != null) {
+                userIDs.add(review.getUserId());
             }
         }
 
-        if (restaurantIDs.isEmpty()) {
+        if (userIDs.isEmpty()) {
             // Không có userId nào => thông báo cập nhật adapter luôn
             adapter.notifyDataSetChanged();
             return;
@@ -123,11 +123,11 @@ public class FeedbackFragment extends Fragment {
         DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users");
 
         // Đếm số lượng user cần load để biết khi nào xong
-        final int totalUsers = restaurantIDs.size();
+        final int totalUsers = userIDs.size();
         final int[] loadedCount = {0};
 
 
-        for (String userId : restaurantIDs) {
+        for (String userId : userIDs) {
             userRef.child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {

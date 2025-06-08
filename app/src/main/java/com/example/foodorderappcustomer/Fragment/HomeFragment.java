@@ -391,28 +391,9 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
                 promotionList.clear();
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     String id = snapshot.getKey();
-                    String code = snapshot.child("promoCode").getValue(String.class);
-                    String startDateStr = snapshot.child("startDate").getValue(String.class);
-                    String endDateStr = snapshot.child("endDate").getValue(String.class);
-                    
-                    // Safely get discountAmount with null check
-                    Double discountValue = snapshot.child("discountAmount").getValue(Double.class);
-                    if (discountValue == null) {
-                        discountValue = 0.0;
-                    }
-                    
-                    String discountType = snapshot.child("discountType").getValue(String.class);
-                    
-                    // Safely get maxDiscountAmount with null check
-                    Double maxDiscount = snapshot.child("maxDiscountAmount").getValue(Double.class);
-                    if (maxDiscount == null) {
-                        maxDiscount = 0.0;
-                    }
-                    
-                    String minimumOrder = snapshot.child("minimumOrder").getValue(String.class);
-                    
-                    Promotion promotion = new Promotion(code, discountType, discountValue, startDateStr, endDateStr, minimumOrder, maxDiscount);
-                    promotion.setDiscountAmount(discountValue);
+
+                    Promotion promotion = snapshot.getValue(Promotion.class);
+                    promotion.setId(id);
                     promotionList.add(promotion);
                 }
 

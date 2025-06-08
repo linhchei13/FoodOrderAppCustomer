@@ -8,8 +8,8 @@
     android:paddingBottom="4dp">
     <androidx.cardview.widget.CardView
         android:id="@+id/cardView"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
         app:cardCornerRadius="16dp">
         <ImageView
             android:id="@+id/orderItemImage"
@@ -23,19 +23,21 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="2x"
+        android:textStyle="bold"
         android:textColor="@android:color/black"
-        android:textSize="14sp"
-        android:layout_marginStart="8dp"/>
+        android:textSize="16sp"
+        android:layout_marginStart="12dp"/>
 
     <TextView
         android:id="@+id/textItemName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        android:layout_weight="0.5"
         android:text="Name"
         android:textColor="@android:color/black"
-        android:textSize="14sp" />
+        android:textSize="16sp"
+        android:textStyle="bold"/>
 
     <TextView
         android:id="@+id/textItemPrice"

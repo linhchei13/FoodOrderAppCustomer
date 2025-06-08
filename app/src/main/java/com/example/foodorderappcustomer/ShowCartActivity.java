@@ -129,7 +129,7 @@ public class ShowCartActivity extends AppCompatActivity implements OrderItemMana
         // Checkout button
         checkoutButton.setOnClickListener(v -> {
             if (!orderItemManager.isEmpty()) {
-                Intent intent = new Intent(ShowCartActivity.this, OrderActivity.class);
+                Intent intent = new Intent(ShowCartActivity.this, CheckOutActivity.class);
                 startActivity(intent);
             } else {
                 Toast.makeText(this, "Giỏ hàng trống", Toast.LENGTH_SHORT).show();

@@ -2,7 +2,6 @@ package com.example.foodorderappcustomer.Adapter;
 
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,12 +11,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.foodorderappcustomer.CategoryMenuActivity;
 import com.example.foodorderappcustomer.Models.Category;
 import com.example.foodorderappcustomer.R;
-import com.example.foodorderappcustomer.util.ImageUtils;
-import com.squareup.picasso.Callback;
-import com.squareup.picasso.Picasso;
 
 import java.util.List;
 
@@ -41,19 +38,11 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
     public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position) {
         Category category = categories.get(position);
         holder.categoryName.setText(category.getName());
-        Picasso.get()
+        Glide.with(context)
                 .load(category.getImageUrl())
-                .into(holder.categoryImage, new Callback() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d("CategoryAdapter", "Image loaded successfully from HTTP URL");
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        Log.e("CategoryAdapter", "Error loading image from HTTP URL: " + e.getMessage());
-                    }
-                });
+                .placeholder(R.drawable.loading_img)
+                .error(R.drawable.logo2)
+                .into(holder.categoryImage);
 
         // Set click listener
         holder.itemView.setOnClickListener(v -> {

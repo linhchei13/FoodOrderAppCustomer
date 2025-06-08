@@ -57,14 +57,24 @@
                     android:contentDescription="Back"
                     android:src="@drawable/baseline_arrow_back_24" />
 
+                <ImageButton
+                    android:id="@+id/favoriteButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="end"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/circle_background"
+                    android:contentDescription="Favorite"
+                    android:src="@drawable/baseline_favorite_border_24" />
+
             </androidx.appcompat.widget.Toolbar>
         </com.google.android.material.appbar.CollapsingToolbarLayout>
     </com.google.android.material.appbar.AppBarLayout>
 
-
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:paddingBottom="80dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
@@ -78,15 +88,33 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="16dp">
-
-                <TextView
-                    android:id="@+id/restaurantNameTextView"
+                <LinearLayout
+                    android:id="@+id/showResInformation"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textSize="24sp"
-                    android:textStyle="bold"
-                    android:text="Tasty Bites"
-                    android:textColor="@android:color/black" />
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/restaurantNameTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:text="Nha Hang"
+                        android:textColor="@android:color/black" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1" />
+
+                    <ImageButton
+                        android:id="@+id/showInformation"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@color/white"
+                        android:src="@drawable/baseline_arrow_forward_ios_24"/>
+                </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -131,31 +159,11 @@
                         android:text="•"
                         android:textSize="14sp" />
 
-<!--                    <TextView-->
-<!--                        android:id="@+id/cuisineText"-->
-<!--                        android:layout_width="wrap_content"-->
-<!--                        android:layout_height="wrap_content"-->
-<!--                        android:text="Italian, Mediterranean"-->
-<!--                        android:textSize="14sp" />-->
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <ImageView
-                        android:layout_width="16dp"
-                        android:layout_height="16dp"
-                        android:src="@drawable/icons8_location" />
-
                     <TextView
-                        android:id="@+id/addressText"
+                        android:id="@+id/categoryText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
+                        android:text="Italian, Mediterranean"
                         android:textSize="14sp" />
                 </LinearLayout>
 
@@ -170,9 +178,8 @@
                         android:id="@+id/deliveryFeeText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-
                         android:drawablePadding="8dp"
-                        android:text="Phí giao hàng"
+                        android:text="Phí giao hàng: 15000đ"
                         android:textSize="14sp" />
 
                     <TextView
@@ -187,7 +194,7 @@
                         android:id="@+id/deliveryTimeText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text=""
+                        android:text="30 phút"
                         android:textSize="14sp" />
                 </LinearLayout>
 
@@ -197,7 +204,6 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:textSize="14sp" />
-<!--                    android:text="Authentic Italian cuisine with a modern twist. Using only the freshest ingredients sourced locally."-->
 
             </LinearLayout>
 
@@ -232,7 +238,7 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Cart Button -->
+    <!-- Updated Cart Button Layout -->
     <LinearLayout
         android:id="@+id/cartButtonLayout"
         android:layout_width="match_parent"
@@ -240,27 +246,46 @@
         android:layout_gravity="bottom"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="16dp"
-        android:background="@android:color/white"
-        android:elevation="8dp"
-        android:visibility="gone">
-        <TextView
-            android:id="@+id/priceTV"
+        android:padding="20dp"
+        android:background="@color/white"
+
+        >
+
+        <!-- Cart Icon and Quantity -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="30000đ"
-            android:textColor="@color/black"
-            android:textSize="16sp"
-            android:textStyle="bold"/>
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_shopping_cart" />
+
+            <TextView
+                android:id="@+id/cartQuantityTV"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="1"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- View Order Button -->
         <Button
             android:id="@+id/viewOrderButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
             android:layout_marginStart="16dp"
-            android:text="Giao hàng"
+            android:layout_weight="1"
+            android:text="Xem đơn hàng • 40.000đ"
             android:textColor="@android:color/white"
-            app:backgroundTint="@color/rebecca_purple"
-            />
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
     </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
