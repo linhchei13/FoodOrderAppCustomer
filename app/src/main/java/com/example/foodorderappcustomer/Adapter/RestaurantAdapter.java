@@ -69,8 +69,7 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
         private TextView restaurantAddress;
         private TextView ratingValue;
         private TextView categoryName;
-        private TextView distance;
-
+        private TextView distanceTextView;
         private TextView averagePriceTV;
         private TextView ratingCountTv;
         private ChipGroup categoryChipGroup;
@@ -84,6 +83,7 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
             categoryName = itemView.findViewById(R.id.categoryName);
             averagePriceTV = itemView.findViewById(R.id.averagePriceTV);
             ratingCountTv = itemView.findViewById(R.id.ratingCountTv);
+            distanceTextView = itemView.findViewById(R.id.distanceTextView);
         }
 
         public void bind(Restaurant restaurant) {
@@ -92,9 +92,26 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
             
             // Set rating
             float rating = (float) restaurant.getRating();
-            ratingValue.setText(String.format("%.1f", rating));
-            ratingCountTv.setText(String.format("(%d)", restaurant.getTotalRatings()));
+            if (rating == 0) {
+                ratingValue.setVisibility(View.GONE);
+                ratingCountTv.setVisibility(View.GONE);
+            } else {
+                ratingValue.setVisibility(View.VISIBLE);
+                ratingCountTv.setVisibility(View.VISIBLE);
+                ratingValue.setText(String.format("%.1f", rating));
+                ratingCountTv.setText(String.format("(%d)", restaurant.getTotalRatings()));
+            }
+
             categoryName.setText(restaurant.getCategory());
+
+            // Set distance
+            if (restaurant.getDistance() > 0) {
+                String distanceText = String.format(Locale.getDefault(), "📍 %.1f km", restaurant.getDistance());
+                distanceTextView.setText(distanceText);
+                distanceTextView.setVisibility(View.VISIBLE);
+            } else {
+                distanceTextView.setVisibility(View.GONE);
+            }
 
             averagePriceTV.setText("Khoảng " + restaurant.getAveragePrice() + "K");
             Glide.with(context)

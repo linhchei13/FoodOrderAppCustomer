@@ -97,6 +97,10 @@ public class Restaurant implements Serializable {
         return distance;
     }
 
+    public void setDistance(double distance) {
+        this.distance = distance;
+    }
+
     public String getImageUrl() {
         return imageUrl;
     }

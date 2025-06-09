@@ -68,7 +68,9 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="8dp">
+                android:layout_marginBottom="8dp"
+                android:paddingVertical="4dp">
+
                 <RatingBar
                     android:id="@+id/restaurantRatingBar"
                     style="?android:attr/ratingBarStyleSmall"
@@ -78,22 +80,26 @@
                     android:rating="4.5"
                     android:stepSize="0.1"
                     android:isIndicator="true"
-                    android:theme="@style/CustomRatingBar" />
+                    android:theme="@style/CustomRatingBar"
+                    android:minHeight="24dp"
+                    android:minWidth="120dp"
+                    android:layout_marginEnd="8dp" />
+
                 <TextView
                     android:id="@+id/ratingValueTextView"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="16sp"
                     android:textColor="@android:color/black"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="8dp"
                     tools:text="4.4" />
+
                 <TextView
                     android:id="@+id/reviewCountTextView"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="16sp"
                     android:textColor="@android:color/darker_gray"
-                    android:layout_marginStart="8dp"
                     tools:text="(0 đánh giá)" />
             </LinearLayout>
 

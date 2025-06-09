@@ -186,24 +186,11 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.MenuIt
                 quantityTextView.setText(String.valueOf(currentItem.getQuantity()));
 
                 // Add animation when quantity changes
-                animateQuantityChange(quantityTextView);
             } else {
                 // Item is not in cart, hide quantity controls
                 decreaseButton.setVisibility(View.GONE);
                 quantityTextView.setVisibility(View.GONE);
             }
-        }
-
-        private void animateQuantityChange(TextView textView) {
-            // Simple scale animation for quantity change
-            android.view.animation.ScaleAnimation scaleAnimation = new android.view.animation.ScaleAnimation(
-                    0.8f, 1.0f, // Start and end X scale
-                    0.8f, 1.0f, // Start and end Y scale
-                    android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f, // Pivot X
-                    android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f  // Pivot Y
-            );
-            scaleAnimation.setDuration(200);
-            textView.startAnimation(scaleAnimation);
         }
     }
 

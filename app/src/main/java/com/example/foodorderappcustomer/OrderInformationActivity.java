@@ -26,6 +26,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -33,7 +34,7 @@ import java.util.Locale;
 import androidx.annotation.Nullable;
 
 public class OrderInformationActivity extends AppCompatActivity {
-    private TextView textOrderId, textOrderStatus, textOrderTime, textReceiveTime;
+    private TextView textOrderId, textOrderStatus, textOrderTime;
     private TextView textRestaurantName;
     private TextView textDeliveryAddress, textDeliveryNote;
     private TextView textPaymentMethod;
@@ -43,7 +44,6 @@ public class OrderInformationActivity extends AppCompatActivity {
     private MaterialButton buttonMarkAsCompleted;
     private MaterialButton buttonReview;
     private ImageButton backButton;
-    private LinearLayout receiveTimeLayout;
 
     private Order currentOrder;
     private DatabaseReference databaseReference;
@@ -52,21 +52,6 @@ public class OrderInformationActivity extends AppCompatActivity {
 
     private static final int REQUEST_REVIEW = 1;
 
-//    private final ActivityResultLauncher<Intent> imagePickerLauncher = registerForActivityResult(
-//        new ActivityResultContracts.StartActivityForResult(),
-//        result -> {
-//            if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-//                Uri selectedImageUri = result.getData().getData();
-//                if (selectedImageUri != null && currentImageIndex >= 0 && currentImageIndex < 3) {
-//                    selectedImageUris.set(currentImageIndex, selectedImageUri);
-//                    ImageView currentImageView = getCurrentImageView(currentImageIndex);
-//                    if (currentImageView != null) {
-//                        currentImageView.setImageURI(selectedImageUri);
-//                    }
-//                }
-//            }
-//        }
-//    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,8 +111,6 @@ public class OrderInformationActivity extends AppCompatActivity {
         buttonCancelOrder = findViewById(R.id.buttonCancelOrder);
         buttonMarkAsCompleted = findViewById(R.id.buttonMarkAsCompleted);
         buttonReview = findViewById(R.id.buttonReview);
-        textReceiveTime = findViewById(R.id.textReceiveTime);
-        receiveTimeLayout = findViewById(R.id.receiveTimeLayout);
 
         // Setup RecyclerView
         orderItemsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -187,12 +170,11 @@ public class OrderInformationActivity extends AppCompatActivity {
         int statusColor;
         switch (currentOrder.getStatus()) {
             case "pending":
-                statusText = "Đang chờ xác nhận";
+                statusText = "Chờ xác nhận";
                 statusColor = getResources().getColor(R.color.status_pending);
                 buttonCancelOrder.setVisibility(View.VISIBLE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
                 buttonReview.setVisibility(View.GONE);
-                receiveTimeLayout.setVisibility(View.GONE);
                 break;
             case "contacted":
                 statusText = "Đang giao";
@@ -200,7 +182,13 @@ public class OrderInformationActivity extends AppCompatActivity {
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.VISIBLE);
                 buttonReview.setVisibility(View.GONE);
-                receiveTimeLayout.setVisibility(View.GONE);
+                break;
+            case "verified":
+                statusText = "Đang giao";
+                statusColor = getResources().getColor(R.color.status_processing);
+                buttonCancelOrder.setVisibility(View.GONE);
+                buttonMarkAsCompleted.setVisibility(View.VISIBLE);
+                buttonReview.setVisibility(View.GONE);
                 break;
             case "completed":
                 statusText = "Hoàn thành";
@@ -208,7 +196,6 @@ public class OrderInformationActivity extends AppCompatActivity {
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
                 buttonReview.setVisibility(View.VISIBLE);
-                receiveTimeLayout.setVisibility(View.VISIBLE);
                 checkExistingReview();
                 break;
             case "cancelled":
@@ -217,7 +204,6 @@ public class OrderInformationActivity extends AppCompatActivity {
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
                 buttonReview.setVisibility(View.GONE);
-                receiveTimeLayout.setVisibility(View.GONE);
                 break;
             case "canceled":
                 statusText = "Đã hủy";
@@ -225,7 +211,6 @@ public class OrderInformationActivity extends AppCompatActivity {
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
                 buttonReview.setVisibility(View.GONE);
-                receiveTimeLayout.setVisibility(View.GONE);
                 break;
             default:
                 statusText = currentOrder.getStatus();
@@ -233,7 +218,6 @@ public class OrderInformationActivity extends AppCompatActivity {
                 buttonCancelOrder.setVisibility(View.GONE);
                 buttonMarkAsCompleted.setVisibility(View.GONE);
                 buttonReview.setVisibility(View.GONE);
-                receiveTimeLayout.setVisibility(View.GONE);
         }
         textOrderStatus.setText(statusText);
         textOrderStatus.setTextColor(statusColor);
@@ -314,10 +298,9 @@ public class OrderInformationActivity extends AppCompatActivity {
                 .setCancelable(false)
                 .create();
             loadingDialog.show();
-            Date dateCompleted = new Date();
+            Date dateCompleted = new Date(System.currentTimeMillis());
             SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
             String formattedDate = dateFormat.format(dateCompleted);
-            textReceiveTime.setText(formattedDate);
 
             // Update order status in Firebase
             databaseReference.child("orders").child(currentOrder.getId())

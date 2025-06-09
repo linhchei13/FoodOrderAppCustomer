@@ -34,6 +34,7 @@ public class RestaurantSearchAdapter extends RecyclerView.Adapter<RestaurantSear
     private Map<String, List<MenuItem>> matchingMenuItems;
     private Context context;
     private OrderItemManager orderItemManager;
+    private MenuItemSearchAdapter menuItemAdapter;
 
     public RestaurantSearchAdapter(List<Restaurant> restaurants, Map<String, List<MenuItem>> restaurantMenuItems, Context context) {
         this.restaurants = restaurants;
@@ -71,6 +72,42 @@ public class RestaurantSearchAdapter extends RecyclerView.Adapter<RestaurantSear
         notifyDataSetChanged();
     }
 
+    public void refreshMenuItem(String menuItemId) {
+        // Update matching menu items if they exist
+        if (matchingMenuItems != null) {
+            for (Map.Entry<String, List<MenuItem>> entry : matchingMenuItems.entrySet()) {
+                List<MenuItem> items = entry.getValue();
+                for (MenuItem item : items) {
+                    if (item.getId().equals(menuItemId)) {
+                        // If this item is in matching items, refresh the restaurant
+                        for (int i = 0; i < restaurants.size(); i++) {
+                            if (restaurants.get(i).getId().equals(entry.getKey())) {
+                                notifyItemChanged(i);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // If not found in matching items, check all menu items
+        for (Map.Entry<String, List<MenuItem>> entry : restaurantMenuItems.entrySet()) {
+            List<MenuItem> items = entry.getValue();
+            for (MenuItem item : items) {
+                if (item.getId().equals(menuItemId)) {
+                    // Find and refresh the restaurant
+                    for (int i = 0; i < restaurants.size(); i++) {
+                        if (restaurants.get(i).getId().equals(entry.getKey())) {
+                            notifyItemChanged(i);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     class RestaurantViewHolder extends RecyclerView.ViewHolder {
         private ImageView restaurantImage;
         private TextView restaurantName;
@@ -97,20 +134,18 @@ public class RestaurantSearchAdapter extends RecyclerView.Adapter<RestaurantSear
 
             // Set rating
             if (restaurant.getRating() > 0) {
-                restaurantRating.setText(String.format("⭐ %.1f (%d+)",
+                restaurantRating.setText(String.format("⭐ %.1f (%d)",
                         restaurant.getRating(), restaurant.getTotalRatings()));
             } else {
-                restaurantRating.setText("⭐ Chưa có đánh giá");
+                restaurantRating.setText("");
             }
 
             // Set distance (you might want to calculate this based on user location)
-            restaurantDistance.setText("📍 0.9 km");
+            restaurantDistance.setText("📍" + String.format("%.1f km", restaurant.getDistance()));
 
             // Set price range
             if (restaurant.getAveragePrice() != null && !restaurant.getAveragePrice().isEmpty()) {
                 restaurantPriceRange.setText("💰 Khoảng " + restaurant.getAveragePrice() + "K");
-            } else {
-                restaurantPriceRange.setText("💰 Khoảng 20K");
             }
 
             // Load restaurant image
@@ -124,7 +159,7 @@ public class RestaurantSearchAdapter extends RecyclerView.Adapter<RestaurantSear
                 restaurantImage.setImageResource(R.drawable.loading_img);
             }
 
-            // Set up menu items horizontal scroll
+            // Setup menu items
             setupMenuItems(restaurant.getId());
 
             // Set click listener for restaurant
@@ -137,37 +172,23 @@ public class RestaurantSearchAdapter extends RecyclerView.Adapter<RestaurantSear
         }
 
         private void setupMenuItems(String restaurantId) {
-            // First check if we have matching menu items for this restaurant
-            if (matchingMenuItems.containsKey(restaurantId)) {
-                List<MenuItem> items = matchingMenuItems.get(restaurantId);
-                if (items != null && !items.isEmpty()) {
-                    // Show matching menu items
-                    MenuItemSearchAdapter adapter = new MenuItemSearchAdapter(items, context);
-                    LinearLayoutManager layoutManager = new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false);
-                    menuItemsRecyclerView.setLayoutManager(layoutManager);
-                    menuItemsRecyclerView.setAdapter(adapter);
-                    menuItemsRecyclerView.setVisibility(View.VISIBLE);
-                    menuItemsRecyclerView.setHasFixedSize(true);
-                    return;
-                }
+            RecyclerView menuItemsRecyclerView = itemView.findViewById(R.id.menuItemsRecyclerView);
+            List<MenuItem> itemsToShow;
+
+            if (matchingMenuItems != null && matchingMenuItems.containsKey(restaurantId)) {
+                // Show matching menu items if available
+                itemsToShow = matchingMenuItems.get(restaurantId);
+            } else if (restaurantMenuItems.containsKey(restaurantId)) {
+                // Otherwise show all menu items
+                itemsToShow = restaurantMenuItems.get(restaurantId);
+            } else {
+                itemsToShow = new ArrayList<>();
             }
 
-            // If no matching items, show regular menu items
-            if (restaurantMenuItems.containsKey(restaurantId)) {
-                List<MenuItem> menuItems = restaurantMenuItems.get(restaurantId);
-                if (menuItems != null && !menuItems.isEmpty()) {
-                    MenuItemSearchAdapter adapter = new MenuItemSearchAdapter(menuItems, context);
-                    LinearLayoutManager layoutManager = new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false);
-                    menuItemsRecyclerView.setLayoutManager(layoutManager);
-                    menuItemsRecyclerView.setAdapter(adapter);
-                    menuItemsRecyclerView.setVisibility(View.VISIBLE);
-                    menuItemsRecyclerView.setHasFixedSize(true);
-                } else {
-                    menuItemsRecyclerView.setVisibility(View.GONE);
-                }
-            } else {
-                menuItemsRecyclerView.setVisibility(View.GONE);
-            }
+            menuItemAdapter = new MenuItemSearchAdapter(itemsToShow, context);
+            LinearLayoutManager layoutManager = new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false);
+            menuItemsRecyclerView.setLayoutManager(layoutManager);
+            menuItemsRecyclerView.setAdapter(menuItemAdapter);
         }
     }
 }

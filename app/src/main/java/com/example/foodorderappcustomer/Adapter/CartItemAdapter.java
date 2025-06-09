@@ -207,7 +207,7 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartIt
             double totalPrice = 0;
             int totalQuantity = 0;
             for (OrderItem item : items) {
-                totalPrice += item.getTotalPrice() * item.getQuantity();
+                totalPrice += item.getTotalPrice();
                 totalQuantity += item.getQuantity();
             }
 

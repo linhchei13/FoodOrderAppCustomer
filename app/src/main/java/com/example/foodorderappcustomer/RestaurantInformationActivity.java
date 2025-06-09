@@ -2,6 +2,7 @@ package com.example.foodorderappcustomer;
 
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageButton;
 import android.widget.RatingBar;
 import android.widget.TextView;
@@ -189,55 +190,120 @@ public class RestaurantInformationActivity extends AppCompatActivity {
     }
 
     private void loadRestaurantReviews() {
+        if (restaurantId == null) {
+            Log.e(TAG, "Restaurant ID is null");
+            return;
+        }
+
+        Log.d(TAG, "Loading reviews for restaurant: " + restaurantId);
+        
         databaseReference.child("reviews")
             .orderByChild("restaurantId")
             .equalTo(restaurantId)
             .addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    reviewList.clear();
-                    userMap.clear();
-                    double totalRating = 0;
-                    int reviewCount = 0;
+                    try {
+                        reviewList.clear();
+                        userMap.clear();
+                        double totalRating = 0;
+                        int reviewCount = 0;
 
-                    List<String> userIdsToFetch = new ArrayList<>();
-
-                    for (DataSnapshot reviewSnapshot : snapshot.getChildren()) {
-                        Review review = reviewSnapshot.getValue(Review.class);
-                        if (review != null) {
-                            reviewList.add(review);
-                            totalRating += review.getRating();
-                            reviewCount++;
-                            userIdsToFetch.add(review.getUserId());
+                        if (!snapshot.exists()) {
+                            Log.d(TAG, "No reviews found for restaurant: " + restaurantId);
+                            updateReviewUI(0, 0, new ArrayList<>());
+                            return;
                         }
+
+                        List<String> userIdsToFetch = new ArrayList<>();
+
+                        for (DataSnapshot reviewSnapshot : snapshot.getChildren()) {
+                            try {
+                                Review review = reviewSnapshot.getValue(Review.class);
+                                if (review != null && review.getUserId() != null) {
+                                    reviewList.add(review);
+                                    totalRating += review.getRating();
+                                    reviewCount++;
+                                    userIdsToFetch.add(review.getUserId());
+                                    Log.d(TAG, "Loaded review: " + review.getComment() + " from user: " + review.getUserId());
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error parsing review: " + e.getMessage());
+                            }
+                        }
+
+                        // Calculate average rating
+                        float averageRating = reviewCount > 0 ? (float) (totalRating / reviewCount) : 0;
+                        updateReviewUI(averageRating, reviewCount, reviewList);
+
+                        // Sort reviews by timestamp (newest first)
+                        Collections.sort(reviewList, (r1, r2) -> {
+                            if (r1.getTimestamp() == null || r2.getTimestamp() == null) return 0;
+                            return Long.compare(r2.getTimestamp().getTime(), r1.getTimestamp().getTime());
+                        });
+
+                        // Fetch user details for reviews
+                        if (!userIdsToFetch.isEmpty()) {
+                            fetchUserDetailsForReviews(userIdsToFetch, () -> {
+                                try {
+                                    ReviewAdapter reviewAdapter = new ReviewAdapter(
+                                        RestaurantInformationActivity.this, 
+                                        reviewList, 
+                                        userMap, 
+                                        restaurantId, 
+                                        null  // Set replyClickListener to null to hide reply button
+                                    );
+                                    reviewsRecyclerView.setAdapter(reviewAdapter);
+                                    Log.d(TAG, "Review adapter updated with " + reviewList.size() + " reviews");
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error setting up review adapter: " + e.getMessage());
+                                }
+                            });
+                        } else {
+                            // If no users to fetch, still show reviews
+                            ReviewAdapter reviewAdapter = new ReviewAdapter(
+                                RestaurantInformationActivity.this, 
+                                reviewList, 
+                                userMap, 
+                                restaurantId, 
+                                null
+                            );
+                            reviewsRecyclerView.setAdapter(reviewAdapter);
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error processing reviews: " + e.getMessage());
+                        Toast.makeText(RestaurantInformationActivity.this, 
+                            "Có lỗi khi tải đánh giá", Toast.LENGTH_SHORT).show();
                     }
-
-                    // Calculate average rating
-                    if (reviewCount > 0) {
-                        restaurantRatingBar.setRating((float) (totalRating / reviewCount));
-                        ratingValueTextView.setText(String.format("%.1f", (totalRating / reviewCount)));
-                    } else {
-                        restaurantRatingBar.setRating(0);
-                        ratingValueTextView.setText("0.0");
-                    }
-                    reviewCountTextView.setText(String.format("(%d đánh giá)", reviewCount));
-
-                    // Sort reviews by timestamp (newest first)
-                    Collections.sort(reviewList, (r1, r2) -> Long.compare(r2.getTimestamp().getTime(), r1.getTimestamp().getTime()));
-
-                    // Fetch user details for reviews
-                    fetchUserDetailsForReviews(userIdsToFetch, () -> {
-                        ReviewAdapter reviewAdapter = new ReviewAdapter(RestaurantInformationActivity.this, reviewList, userMap, restaurantId, null);
-                        reviewsRecyclerView.setAdapter(reviewAdapter);
-                    });
                 }
 
                 @Override
                 public void onCancelled(@NonNull DatabaseError error) {
                     Log.e(TAG, "Error loading restaurant reviews: " + error.getMessage());
-                    Toast.makeText(RestaurantInformationActivity.this, "Error loading reviews", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RestaurantInformationActivity.this, 
+                        "Lỗi khi tải đánh giá: " + error.getMessage(), Toast.LENGTH_SHORT).show();
                 }
             });
+    }
+
+    private void updateReviewUI(float averageRating, int reviewCount, List<Review> reviews) {
+        try {
+            restaurantRatingBar.setRating(averageRating);
+            ratingValueTextView.setText(String.format("%.1f", averageRating));
+            reviewCountTextView.setText(String.format("(%d đánh giá)", reviewCount));
+
+            if (reviews.isEmpty()) {
+                // Show a message when there are no reviews
+                TextView noReviewsText = new TextView(this);
+                noReviewsText.setText("Chưa có đánh giá nào");
+                noReviewsText.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                noReviewsText.setPadding(0, 32, 0, 32);
+                reviewsRecyclerView.setAdapter(null);
+                reviewsRecyclerView.addView(noReviewsText);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error updating review UI: " + e.getMessage());
+        }
     }
 
     private void fetchUserDetailsForReviews(List<String> userIds, Runnable onComplete) {
@@ -246,26 +312,36 @@ public class RestaurantInformationActivity extends AppCompatActivity {
             return;
         }
 
+        int totalUsers = userIds.size();
+        final int[] fetchedUsers = {0};
+
         DatabaseReference usersRef = databaseReference.child("users");
         for (String userId : userIds) {
             usersRef.child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    User user = snapshot.getValue(User.class);
-                    if (user != null) {
-                        userMap.put(userId, user);
+                    try {
+                        User user = snapshot.getValue(User.class);
+                        if (user != null) {
+                            userMap.put(userId, user);
+                            Log.d(TAG, "Loaded user details for: " + userId);
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error parsing user data for " + userId + ": " + e.getMessage());
                     }
-                    // Check if all user details have been fetched
-                    if (userMap.size() == userIds.size()) {
+
+                    fetchedUsers[0]++;
+                    if (fetchedUsers[0] == totalUsers) {
+                        Log.d(TAG, "All user details fetched. Total: " + userMap.size());
                         onComplete.run();
                     }
                 }
 
                 @Override
                 public void onCancelled(@NonNull DatabaseError error) {
-                    Log.e(TAG, "Failed to load user details: " + error.getMessage());
-                    // Even if there's an error, try to proceed
-                    if (userMap.size() == userIds.size()) {
+                    Log.e(TAG, "Failed to load user details for " + userId + ": " + error.getMessage());
+                    fetchedUsers[0]++;
+                    if (fetchedUsers[0] == totalUsers) {
                         onComplete.run();
                     }
                 }

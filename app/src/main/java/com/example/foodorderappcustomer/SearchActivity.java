@@ -1,5 +1,7 @@
 package com.example.foodorderappcustomer;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -14,6 +16,7 @@ import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -27,6 +30,15 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.example.foodorderappcustomer.API.GeoCodingApi;
+import com.example.foodorderappcustomer.API.GeoResponse;
+import com.example.foodorderappcustomer.API.DistanceAPI;
+import com.example.foodorderappcustomer.API.DistanceResult;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import android.content.SharedPreferences;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,10 +48,10 @@ import java.util.List;
 import java.util.Map;
 
 public class SearchActivity extends AppCompatActivity {
+    private static final int REQUEST_FOOD_DETAIL = 1;
     private RadioGroup sortGroup;
     private RadioButton rbDefault, rbCheapest, rbBestSeller, rbNearest, rbBestRating;
     private Button btn35Rating, btn40Rating, btn45Rating;
-    private Button btnPriceRange1, btnPriceRange2;
     private EditText etMinPrice, etMaxPrice;
     private Button btnReset, btnConfirm;
     private EditText etSearchQuery;
@@ -59,15 +71,23 @@ public class SearchActivity extends AppCompatActivity {
     private double minPrice = 0;
     private double maxPrice = Double.MAX_VALUE;
 
+    private String userLatitude;
+    private String userLongitude;
+    private FirebaseAuth firebaseAuth;
+    private Map<String, Restaurant> restaurantMap = new HashMap<>();
+    private boolean isCalculatingDistances = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_enhanced);
 
+        firebaseAuth = FirebaseAuth.getInstance();
         initViews();
         setupData();
         setupListeners();
         setupRecyclerView();
+        loadUserLocation();
     }
 
     private void initViews() {
@@ -89,8 +109,6 @@ public class SearchActivity extends AppCompatActivity {
         btn45Rating = findViewById(R.id.btn45Rating);
 
         // Price range
-        btnPriceRange1 = findViewById(R.id.btnPriceRange1);
-        btnPriceRange2 = findViewById(R.id.btnPriceRange2);
         etMinPrice = findViewById(R.id.etMinPrice);
         etMaxPrice = findViewById(R.id.etMaxPrice);
 
@@ -108,6 +126,7 @@ public class SearchActivity extends AppCompatActivity {
     }
 
     private void toggleFilterSection() {
+        btnFilter.setBackgroundResource(isFilterVisible ? R.drawable.button_outline : R.drawable.button_selected);
         isFilterVisible = !isFilterVisible;
         filterSection.setVisibility(isFilterVisible ? View.VISIBLE : View.GONE);
 
@@ -128,8 +147,6 @@ public class SearchActivity extends AppCompatActivity {
 
         // Show loading indicator
         recyclerView.setVisibility(View.GONE);
-        // TODO: Add a loading indicator view
-
         // Load restaurants from Firebase
         DatabaseReference reference = FirebaseDatabase.getInstance().getReference();
         reference.child("restaurants").addValueEventListener(new ValueEventListener() {
@@ -137,11 +154,13 @@ public class SearchActivity extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 Log.d("SearchActivity", "Loading restaurants data");
                 restaurantList.clear();
+                restaurantMap.clear();
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     Restaurant restaurant = snapshot.getValue(Restaurant.class);
                     if (restaurant != null) {
                         restaurant.setId(snapshot.getKey());
                         restaurantList.add(restaurant);
+                        restaurantMap.put(restaurant.getId(), restaurant);
                         Log.d("SearchActivity", "Loaded restaurant: " + restaurant.getName());
                     }
                 }
@@ -153,6 +172,11 @@ public class SearchActivity extends AppCompatActivity {
                 // Load menu items for each restaurant
                 for (Restaurant restaurant : restaurantList) {
                     loadMenuItemsForRestaurant(restaurant.getId());
+                }
+
+                // Calculate distances if we have user location
+                if (userLatitude != null && userLongitude != null) {
+                    calculateDistancesForRestaurants();
                 }
 
                 // Show results
@@ -233,7 +257,10 @@ public class SearchActivity extends AppCompatActivity {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // Show/hide clear button based on text
+                btnClearSearch.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+            }
 
             @Override
             public void afterTextChanged(Editable s) {
@@ -249,6 +276,22 @@ public class SearchActivity extends AppCompatActivity {
         btnClearSearch.setOnClickListener(v -> {
             etSearchQuery.setText("");
             performSearch();
+            btnClearSearch.setVisibility(View.GONE);
+        });
+
+        // Handle search action from keyboard
+        etSearchQuery.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                String query = etSearchQuery.getText().toString().trim();
+                if (!query.isEmpty()) {
+                    performSearch();
+                    // Hide keyboard
+                    android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(etSearchQuery.getWindowToken(), 0);
+                }
+                return true;
+            }
+            return false;
         });
 
         // Back button
@@ -276,27 +319,6 @@ public class SearchActivity extends AppCompatActivity {
             applyFilters();
         });
 
-        // Price range buttons
-        btnPriceRange1.setOnClickListener(v -> {
-            minPrice = 0;
-            maxPrice = 30000;
-            etMinPrice.setText("0");
-            etMaxPrice.setText("30000");
-            resetPriceButtonsStyle();
-            btnPriceRange1.setBackgroundResource(R.drawable.button_selected);
-            applyFilters();
-        });
-
-        btnPriceRange2.setOnClickListener(v -> {
-            minPrice = 30000;
-            maxPrice = 50000;
-            etMinPrice.setText("30000");
-            etMaxPrice.setText("50000");
-            resetPriceButtonsStyle();
-            btnPriceRange2.setBackgroundResource(R.drawable.button_selected);
-            applyFilters();
-        });
-
         // Reset button
         btnReset.setOnClickListener(v -> resetFilters());
 
@@ -314,14 +336,9 @@ public class SearchActivity extends AppCompatActivity {
     }
 
     private void resetRatingButtonsStyle() {
-        if (btn35Rating != null) btn35Rating.setBackgroundResource(R.drawable.button_outline);
-        if (btn40Rating != null) btn40Rating.setBackgroundResource(R.drawable.button_outline);
-        if (btn45Rating != null) btn45Rating.setBackgroundResource(R.drawable.button_outline);
-    }
-
-    private void resetPriceButtonsStyle() {
-        if (btnPriceRange1 != null) btnPriceRange1.setBackgroundResource(R.drawable.button_outline);
-        if (btnPriceRange2 != null) btnPriceRange2.setBackgroundResource(R.drawable.button_outline);
+        if (btn35Rating != null) btn35Rating.setBackgroundResource(R.drawable.button_outline_purple);
+        if (btn40Rating != null) btn40Rating.setBackgroundResource(R.drawable.button_outline_purple);
+        if (btn45Rating != null) btn45Rating.setBackgroundResource(R.drawable.button_outline_purple);
     }
 
     private void performSearch() {
@@ -343,8 +360,7 @@ public class SearchActivity extends AppCompatActivity {
                 List<MenuItem> restaurantMatchingItems = new ArrayList<>();
 
                 // Search in restaurant name and description
-                if (restaurant.getName().toLowerCase().contains(query) ||
-                        (restaurant.getDescription() != null && restaurant.getDescription().toLowerCase().contains(query))) {
+                if (restaurant.getName().toLowerCase().contains(query)) {
                     restaurantMatch = true;
                     Log.d("SearchActivity", "Restaurant match found: " + restaurant.getName());
                 }
@@ -353,8 +369,7 @@ public class SearchActivity extends AppCompatActivity {
                 if (restaurantMenuItems.containsKey(restaurant.getId())) {
                     List<MenuItem> menuItems = restaurantMenuItems.get(restaurant.getId());
                     for (MenuItem item : menuItems) {
-                        if (item.getName().toLowerCase().contains(query) ||
-                                (item.getDescription() != null && item.getDescription().toLowerCase().contains(query))) {
+                        if (item.getName().toLowerCase().contains(query)) {
                             restaurantMatch = true;
                             restaurantMatchingItems.add(item);
                             Log.d("SearchActivity", "Menu item match found: " + item.getName() + " in restaurant: " + restaurant.getName());
@@ -410,7 +425,6 @@ public class SearchActivity extends AppCompatActivity {
         maxPrice = Double.MAX_VALUE;
         if (etMinPrice != null) etMinPrice.setText("");
         if (etMaxPrice != null) etMaxPrice.setText("");
-        resetPriceButtonsStyle();
 
         // Clear search and reset list
         if (etSearchQuery != null) etSearchQuery.setText("");
@@ -452,8 +466,7 @@ public class SearchActivity extends AppCompatActivity {
                 List<MenuItem> restaurantMatchingItems = new ArrayList<>();
 
                 // Search in restaurant name and description
-                if (restaurant.getName().toLowerCase().contains(query) ||
-                        (restaurant.getDescription() != null && restaurant.getDescription().toLowerCase().contains(query))) {
+                if (restaurant.getName().toLowerCase().contains(query)) {
                     restaurantMatch = true;
                 }
 
@@ -461,8 +474,7 @@ public class SearchActivity extends AppCompatActivity {
                 if (restaurantMenuItems.containsKey(restaurant.getId())) {
                     List<MenuItem> menuItems = restaurantMenuItems.get(restaurant.getId());
                     for (MenuItem item : menuItems) {
-                        if (item.getName().toLowerCase().contains(query) ||
-                                (item.getDescription() != null && item.getDescription().toLowerCase().contains(query))) {
+                        if (item.getName().toLowerCase().contains(query)) {
                             restaurantMatch = true;
                             restaurantMatchingItems.add(item);
                         }
@@ -539,7 +551,17 @@ public class SearchActivity extends AppCompatActivity {
 
         int checkedId = sortGroup.getCheckedRadioButtonId();
 
-        if (checkedId == R.id.rbCheapest) {
+        if (checkedId == R.id.rbNearest) {
+            // Sort by distance
+            Collections.sort(filteredList, (r1, r2) -> {
+                double dist1 = r1.getDistance();
+                double dist2 = r2.getDistance();
+                // If distance is not calculated (0), put it at the end
+                if (dist1 == 0) return 1;
+                if (dist2 == 0) return -1;
+                return Double.compare(dist1, dist2);
+            });
+        } else if (checkedId == R.id.rbCheapest) {
             Collections.sort(filteredList, (r1, r2) -> {
                 try {
                     String price1 = r1.getAveragePrice();
@@ -560,6 +582,147 @@ public class SearchActivity extends AppCompatActivity {
 
         if (adapter != null) {
             adapter.notifyDataSetChanged();
+        }
+    }
+
+    private void loadUserLocation() {
+        SharedPreferences prefs = getSharedPreferences(firebaseAuth.getUid(), Context.MODE_PRIVATE);
+        String currentAddress = prefs.getString("current_address", null);
+        
+        if (currentAddress != null && !currentAddress.isEmpty()) {
+            // Try to get cached coordinates first
+            userLatitude = prefs.getString("current_latitude", null);
+            userLongitude = prefs.getString("current_longitude", null);
+
+            if (userLatitude == null || userLongitude == null) {
+                // If no cached coordinates, geocode the address
+                String apiKey = getString(R.string.goong_api_key);
+                GeoCodingApi.apiInterface.getGeo(apiKey, currentAddress)
+                    .enqueue(new Callback<GeoResponse>() {
+                        @Override
+                        public void onResponse(Call<GeoResponse> call, Response<GeoResponse> response) {
+                            if (response.isSuccessful() && response.body() != null && 
+                                response.body().getResults() != null && !response.body().getResults().isEmpty()) {
+                                
+                                GeoResponse.GeocoderResult result = response.body().getResults().get(0);
+                                userLatitude = String.valueOf(result.getGeometry().getLocation().getLat());
+                                userLongitude = String.valueOf(result.getGeometry().getLocation().getLng());
+
+                                // Cache the coordinates
+                                prefs.edit()
+                                    .putString("current_latitude", userLatitude)
+                                    .putString("current_longitude", userLongitude)
+                                    .apply();
+
+                                // Calculate distances for all restaurants
+                                calculateDistancesForRestaurants();
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Call<GeoResponse> call, Throwable t) {
+                            Log.e("SearchActivity", "Error getting user coordinates", t);
+                        }
+                    });
+            } else {
+                // We have cached coordinates, calculate distances
+                calculateDistancesForRestaurants();
+            }
+        }
+    }
+
+    private void calculateDistancesForRestaurants() {
+        if (isCalculatingDistances || userLatitude == null || userLongitude == null) {
+            return;
+        }
+
+        isCalculatingDistances = true;
+        String apiKey = getString(R.string.goong_api_key);
+
+        for (Restaurant restaurant : restaurantList) {
+            if (restaurant.getAddress() == null || restaurant.getAddress().isEmpty()) {
+                continue;
+            }
+
+            // First get restaurant coordinates
+            GeoCodingApi.apiInterface.getGeo(apiKey, restaurant.getAddress())
+                .enqueue(new Callback<GeoResponse>() {
+                    @Override
+                    public void onResponse(Call<GeoResponse> call, Response<GeoResponse> response) {
+                        if (response.isSuccessful() && response.body() != null && 
+                            response.body().getResults() != null && !response.body().getResults().isEmpty()) {
+                            
+                            GeoResponse.GeocoderResult result = response.body().getResults().get(0);
+                            String restaurantLat = String.valueOf(result.getGeometry().getLocation().getLat());
+                            String restaurantLng = String.valueOf(result.getGeometry().getLocation().getLng());
+
+                            // Calculate distance
+                            String origins = userLatitude + "," + userLongitude;
+                            String destinations = restaurantLat + "," + restaurantLng;
+
+                            DistanceAPI.apiInterface.getDistance(apiKey, origins, destinations, "car")
+                                .enqueue(new Callback<DistanceResult>() {
+                                    @Override
+                                    public void onResponse(Call<DistanceResult> call, Response<DistanceResult> response) {
+                                        if (response.isSuccessful() && response.body() != null && 
+                                            response.body().getRows() != null && !response.body().getRows().isEmpty()) {
+                                            
+                                            DistanceResult.Rows row = response.body().getRows().get(0);
+                                            if (row.getElements() != null && !row.getElements().isEmpty()) {
+                                                DistanceResult.Elements element = row.getElements().get(0);
+                                                if (element.getStatus().equals("OK")) {
+                                                    double distanceInKm = Double.parseDouble(element.getDistance().getValue()) / 1000.0;
+                                                    
+                                                    // Update restaurant distance
+                                                    restaurant.setDistance(distanceInKm);
+                                                    
+                                                    // If we're currently sorting by distance, update the list
+                                                    if (rbNearest != null && rbNearest.isChecked()) {
+                                                        applySort();
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onFailure(Call<DistanceResult> call, Throwable t) {
+                                        Log.e("SearchActivity", "Error calculating distance", t);
+                                    }
+                                });
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<GeoResponse> call, Throwable t) {
+                        Log.e("SearchActivity", "Error getting restaurant coordinates", t);
+                    }
+                });
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_FOOD_DETAIL && resultCode == RESULT_OK && data != null) {
+            String foodId = data.getStringExtra("FOOD_ID");
+            Log.d("SearchActivity", "Received result for food item: " + foodId);
+
+            if (foodId != null && adapter != null) {
+                // Refresh the specific item in the adapter
+                adapter.refreshMenuItem(foodId);
+                Log.d("SearchActivity", "Refreshing menu item: " + foodId);
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Refresh all items when activity resumes
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+            Log.d("SearchActivity", "Refreshed all items on resume");
         }
     }
 }

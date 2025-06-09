@@ -54,6 +54,7 @@
                 android:layout_gravity="center_vertical"
                 android:layout_marginEnd="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="@color/black"
                 android:visibility="gone" />
 
         </LinearLayout>
@@ -91,10 +92,10 @@
                     android:id="@+id/rbDefault"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Đề xuất"
+                    android:text="Mặc định"
                     android:checked="true"
                     android:textSize="14sp"
-                    android:layout_marginEnd="16dp" />
+                    android:layout_marginEnd="8dp" />
 
                 <RadioButton
                     android:id="@+id/rbCheapest"
@@ -134,10 +135,11 @@
     <LinearLayout
         android:id="@+id/filterSection"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical"
         android:background="@android:color/white"
-        android:visibility="gone">
+        android:visibility="gone"
+       >
 
         <!-- Rating Filter -->
         <LinearLayout
@@ -164,8 +166,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="3.5 trở lên"
-                    android:drawableStart="@drawable/ic_star"
-                    android:background="@drawable/button_outline"
+                    android:background="@drawable/button_outline_purple"
                     android:textColor="@android:color/black"
                     android:layout_marginEnd="8dp" />
 
@@ -175,8 +176,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="4.0 trở lên"
-                    android:drawableStart="@drawable/ic_star"
-                    android:background="@drawable/button_outline"
+                    android:background="@drawable/button_outline_purple"
                     android:textColor="@android:color/black"
                     android:layout_marginEnd="8dp" />
 
@@ -186,8 +186,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="4.5 trở lên"
-                    android:drawableStart="@drawable/ic_star"
-                    android:background="@drawable/button_outline"
+                    android:background="@drawable/button_outline_purple"
                     android:textColor="@android:color/black" />
             </LinearLayout>
         </LinearLayout>
@@ -239,32 +238,6 @@
                     android:background="@drawable/edit_text"
                     android:padding="12dp" />
             </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="8dp">
-
-                <Button
-                    android:id="@+id/btnPriceRange1"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="0đ - 30.000đ"
-                    android:background="@drawable/button_outline"
-                    android:textColor="@android:color/black"
-                    android:layout_marginEnd="8dp" />
-
-                <Button
-                    android:id="@+id/btnPriceRange2"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="30.000đ - 50.000đ"
-                    android:background="@drawable/button_outline"
-                    android:textColor="@android:color/black" />
-            </LinearLayout>
         </LinearLayout>
 
         <!-- Action Buttons -->
@@ -280,7 +253,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Đặt lại"
-                android:background="@drawable/button_outline"
+                android:background="@drawable/button_outline_purple"
                 android:textColor="@android:color/black"
                 android:layout_marginEnd="8dp" />
 

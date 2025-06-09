@@ -37,14 +37,28 @@
                 android:layout_height="wrap_content"
                 android:textSize="16sp"
                 android:textStyle="bold" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
 
             <TextView
                 android:id="@+id/restaurantAddress"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/distanceTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/black"
+                android:textSize="12sp"
+                android:drawablePadding="4dp" />
+            </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"

@@ -411,6 +411,8 @@ public class CheckOutActivity extends AppCompatActivity {
                                 Toast.LENGTH_LONG).show();
 
                         Intent intent = new Intent(CheckOutActivity.this, OrderInformationActivity.class);
+                        intent.putExtra("ORDER_ID", submittedOrder.getId());
+
                         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                         startActivity(intent);
                         finish();

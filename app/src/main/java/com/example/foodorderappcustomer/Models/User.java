@@ -11,6 +11,7 @@ public class User {
     private String phone;
     private String profileImageUrl;
     private Map<String, Object> address;
+
     private long createdAt;
 
     // Default constructor required for Firebase

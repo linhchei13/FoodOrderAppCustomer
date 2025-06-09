@@ -112,25 +112,25 @@
                         android:textSize="14sp" />
                     </LinearLayout>
 
-                    <LinearLayout
-                        android:id="@+id/receiveTimeLayout"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:orientation="horizontal"
-                        android:layout_marginTop="8dp">
+<!--                    <LinearLayout-->
+<!--                        android:id="@+id/receiveTimeLayout"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="match_parent"-->
+<!--                        android:orientation="horizontal"-->
+<!--                        android:layout_marginTop="8dp">-->
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Thời gian nhận hàng:"/>
+<!--                        <TextView-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:text="Thời gian nhận hàng:"/>-->
 
-                        <TextView
-                            android:id="@+id/textReceiveTime"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="20/03/2024 15:30"
-                            android:textSize="14sp" />
-                    </LinearLayout>
+<!--                        <TextView-->
+<!--                            android:id="@+id/textReceiveTime"-->
+<!--                            android:layout_width="match_parent"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:text="20/03/2024 15:30"-->
+<!--                            android:textSize="14sp" />-->
+<!--                    </LinearLayout>-->
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
             <!-- Delivery Info Card -->

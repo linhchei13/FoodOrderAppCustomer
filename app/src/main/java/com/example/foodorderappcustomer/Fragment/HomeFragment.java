@@ -16,6 +16,8 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.foodorderappcustomer.API.GeoCodingApi;
+import com.example.foodorderappcustomer.API.GeoResponse;
 import com.example.foodorderappcustomer.Adapter.CategoryAdapter;
 import com.example.foodorderappcustomer.Adapter.PromotionAdapter;
 import com.example.foodorderappcustomer.Adapter.RestaurantAdapter;
@@ -49,6 +51,15 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
 import com.example.foodorderappcustomer.util.OrderItemManager;
+import com.example.foodorderappcustomer.API.DistanceAPI;
+import com.example.foodorderappcustomer.API.DistanceResult;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class HomeFragment extends Fragment implements PromotionAdapter.OnPromotionClickListener {
 
@@ -77,6 +88,64 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
     private ActivityResultLauncher<Intent> locationActivityLauncher;
 
     private OrderItemManager orderItemManager;
+
+    private static final String GOONG_API_KEY = "YOUR_GOONG_API_KEY"; // Replace with your actual API key
+    private String userLatitude;
+    private String userLongitude;
+
+    // Cache for geocoding results
+    private static class GeocodingCache {
+        private final String address;
+        private final String latitude;
+        private final String longitude;
+        private final long timestamp;
+
+        public GeocodingCache(String address, String latitude, String longitude) {
+            this.address = address;
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        public boolean isValid() {
+            // Cache valid for 24 hours
+            return System.currentTimeMillis() - timestamp < TimeUnit.HOURS.toMillis(24);
+        }
+    }
+
+    // Cache for distance results
+    private static class DistanceCache {
+        private final String originLat;
+        private final String originLng;
+        private final String destLat;
+        private final String destLng;
+        private final double distance;
+        private final long timestamp;
+
+        public DistanceCache(String originLat, String originLng, String destLat, String destLng, double distance) {
+            this.originLat = originLat;
+            this.originLng = originLng;
+            this.destLat = destLat;
+            this.destLng = destLng;
+            this.distance = distance;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        public boolean isValid() {
+            // Cache valid for 1 hour
+            return System.currentTimeMillis() - timestamp < TimeUnit.HOURS.toMillis(1);
+        }
+
+        public boolean matches(String originLat, String originLng, String destLat, String destLng) {
+            return this.originLat.equals(originLat) && 
+                   this.originLng.equals(originLng) && 
+                   this.destLat.equals(destLat) && 
+                   this.destLng.equals(destLng);
+        }
+    }
+
+    private Map<String, GeocodingCache> geocodingCache = new HashMap<>();
+    private List<DistanceCache> distanceCache = new ArrayList<>();
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -165,11 +234,6 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
             Intent intent = new Intent(getContext(), LocationActivity.class);
             locationActivityLauncher.launch(intent);
         });
-//        addressTextView.setOnClickListener(v -> {
-//            Intent intent = new Intent(getContext(), SavedAddressesActivity.class);
-//            startActivity(intent);
-//                }
-//                );
     }
 
     private void setupCategoryRecyclerView() {
@@ -290,37 +354,284 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
     }
 
     private void loadRestaurants() {
+        if (!isAdded() || getActivity() == null) {
+            return;
+        }
+
         databaseReference.child("restaurants").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (!isAdded() || getActivity() == null) {
+                    return;
+                }
+
                 restaurantList.clear();
                 nearbyRestaurantList.clear();
 
-                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    String id = snapshot.getKey();
-                    loadRestaurantReviews(id);
-                    loadItems(id);
+                try {
+                    loadRestaurantsWithoutDistance(dataSnapshot);
+                    // Get user's current address from SharedPreferences
+                    SharedPreferences prefs = getActivity().getSharedPreferences(firebaseAuth.getUid(), Context.MODE_PRIVATE);
+                    String currentAddress = prefs.getString("current_address", null);
 
-                    Restaurant restaurant = snapshot.getValue(Restaurant.class);
-                    restaurant.setId(snapshot.getKey());
-                    if (snapshot.hasChild("category")) {
-                        String category = snapshot.child("category").getValue(String.class);
-                        restaurant.setCategory(category);
+                    if (currentAddress != null && !currentAddress.isEmpty()) {
+                         // Geocode the current address to get coordinates
+                        String apiKey = getContext().getString(R.string.goong_api_key);
+                        GeoCodingApi.apiInterface.getGeo(apiKey, currentAddress)
+                            .enqueue(new Callback<GeoResponse>() {
+                                @Override
+                                public void onResponse(Call<GeoResponse> call, Response<GeoResponse> response) {
+                                    if (!isAdded() || getActivity() == null) {
+                                        return;
+                                    }
+
+                                    if (response.isSuccessful() && response.body() != null &&
+                                        response.body().getResults() != null && !response.body().getResults().isEmpty()) {
+
+                                        GeoResponse.GeocoderResult result = response.body().getResults().get(0);
+                                        userLatitude = String.valueOf(result.getGeometry().getLocation().getLat());
+                                        userLongitude = String.valueOf(result.getGeometry().getLocation().getLng());
+
+                                        try {
+                                            // Store coordinates in SharedPreferences
+                                            prefs.edit()
+                                                .putString("current_latitude", userLatitude)
+                                                .putString("current_longitude", userLongitude)
+                                                .apply();
+
+                                            // Now load restaurants with the coordinates
+                                            loadRestaurantsWithCoordinates(dataSnapshot);
+                                        } catch (Exception e) {
+                                            Log.e("HomeFragment", "Error saving coordinates", e);
+                                            loadRestaurantsWithoutDistance(dataSnapshot);
+                                        }
+                                    } else {
+                                        loadRestaurantsWithoutDistance(dataSnapshot);
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Call<GeoResponse> call, Throwable t) {
+                                    Log.e("GeoCodingAPI", "Error getting user coordinates", t);
+                                    if (isAdded()) {
+                                        loadRestaurantsWithoutDistance(dataSnapshot);
+                                    }
+                                }
+                            });
                     } else {
-                        restaurant.setCategory("Chưa có danh mục");
+                        loadRestaurantsWithoutDistance(dataSnapshot);
                     }
-
-                    restaurantList.add(restaurant);
+                } catch (Exception e) {
+                    Log.e("HomeFragment", "Error accessing SharedPreferences", e);
+                    loadRestaurantsWithoutDistance(dataSnapshot);
                 }
-
-                restaurantAdapter.updateData(restaurantList);
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
-                Toast.makeText(getContext(), "Lỗi khi tải nhà hàng", Toast.LENGTH_SHORT).show();
+                if (isAdded()) {
+                    Toast.makeText(getContext(), "Lỗi khi tải nhà hàng", Toast.LENGTH_SHORT).show();
+                }
             }
         });
+    }
+
+    private void loadRestaurantsWithCoordinates(DataSnapshot dataSnapshot) {
+        // Check if fragment is still attached
+        if (!isAdded() || getActivity() == null) {
+            return;
+        }
+
+        restaurantList.clear();
+        Map<String, Restaurant> restaurantMap = new HashMap<>();
+
+        for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+            String id = snapshot.getKey();
+            loadRestaurantReviews(id);
+            loadItems(id);
+
+            Restaurant restaurant = snapshot.getValue(Restaurant.class);
+            restaurant.setId(snapshot.getKey());
+            if (snapshot.hasChild("category")) {
+                String category = snapshot.child("category").getValue(String.class);
+                restaurant.setCategory(category);
+            } else {
+                restaurant.setCategory("Chưa có danh mục");
+            }
+
+            restaurantMap.put(id, restaurant);
+            restaurantList.add(restaurant);
+
+            if (restaurant.getAddress() != null && !restaurant.getAddress().isEmpty()) {
+                calculateDistanceWithCache(restaurant, restaurantMap);
+            }
+        }
+
+        if (isAdded() && restaurantAdapter != null) {
+            restaurantAdapter.updateData(restaurantList);
+        }
+    }
+
+    private void calculateDistanceWithCache(Restaurant restaurant, Map<String, Restaurant> restaurantMap) {
+        // Check if fragment is still attached
+        if (!isAdded() || getActivity() == null) {
+            return;
+        }
+
+        // Check if we have cached geocoding for restaurant
+        GeocodingCache restaurantLocationCache = geocodingCache.get(restaurant.getAddress());
+        if (restaurantLocationCache != null && restaurantLocationCache.isValid()) {
+            // Use cached restaurant coordinates
+            calculateDistanceWithCoordinates(
+                restaurant, 
+                restaurantMap, 
+                restaurantLocationCache.latitude, 
+                restaurantLocationCache.longitude
+            );
+        } else {
+            // Need to geocode restaurant address
+            String apiKey = getContext().getString(R.string.goong_api_key);
+            GeoCodingApi.apiInterface.getGeo(apiKey, restaurant.getAddress())
+                .enqueue(new Callback<GeoResponse>() {
+                    @Override
+                    public void onResponse(Call<GeoResponse> call, Response<GeoResponse> response) {
+                        // Check if fragment is still attached
+                        if (!isAdded() || getActivity() == null) {
+                            return;
+                        }
+
+                        if (response.isSuccessful() && response.body() != null && 
+                            response.body().getResults() != null && !response.body().getResults().isEmpty()) {
+                            
+                            GeoResponse.GeocoderResult result = response.body().getResults().get(0);
+                            String restaurantLat = String.valueOf(result.getGeometry().getLocation().getLat());
+                            String restaurantLng = String.valueOf(result.getGeometry().getLocation().getLng());
+
+                            // Cache the geocoding result
+                            geocodingCache.put(restaurant.getAddress(), 
+                                new GeocodingCache(restaurant.getAddress(), restaurantLat, restaurantLng));
+
+                            calculateDistanceWithCoordinates(restaurant, restaurantMap, restaurantLat, restaurantLng);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<GeoResponse> call, Throwable t) {
+                        Log.e("GeoCodingAPI", "Error getting restaurant coordinates", t);
+                    }
+                });
+        }
+    }
+
+    private void calculateDistanceWithCoordinates(Restaurant restaurant, Map<String, Restaurant> restaurantMap, 
+                                                String restaurantLat, String restaurantLng) {
+        // Check if fragment is still attached
+        if (!isAdded() || getActivity() == null) {
+            return;
+        }
+
+        // Check if we have cached distance
+        for (DistanceCache cache : distanceCache) {
+            if (cache.isValid() && cache.matches(userLatitude, userLongitude, restaurantLat, restaurantLng)) {
+                // Use cached distance
+                updateRestaurantDistance(restaurant, restaurantMap, cache.distance);
+                return;
+            }
+        }
+
+        // Need to calculate distance
+        String apiKey = getContext().getString(R.string.goong_api_key);
+        String origins = userLatitude + "," + userLongitude;
+        String destinations = restaurantLat + "," + restaurantLng;
+
+        DistanceAPI.apiInterface.getDistance(apiKey, origins, destinations, "car")
+            .enqueue(new Callback<DistanceResult>() {
+                @Override
+                public void onResponse(Call<DistanceResult> call, Response<DistanceResult> response) {
+                    // Check if fragment is still attached
+                    if (!isAdded() || getActivity() == null) {
+                        return;
+                    }
+
+                    if (response.isSuccessful() && response.body() != null && 
+                        response.body().getRows() != null && !response.body().getRows().isEmpty()) {
+                        
+                        DistanceResult.Rows row = response.body().getRows().get(0);
+                        if (row.getElements() != null && !row.getElements().isEmpty()) {
+                            DistanceResult.Elements element = row.getElements().get(0);
+                            if (element.getStatus().equals("OK")) {
+                                double distanceInKm = Double.parseDouble(element.getDistance().getValue()) / 1000.0;
+                                
+                                // Cache the distance result
+                                distanceCache.add(new DistanceCache(userLatitude, userLongitude, 
+                                    restaurantLat, restaurantLng, distanceInKm));
+
+                                // Update restaurant distance
+                                updateRestaurantDistance(restaurant, restaurantMap, distanceInKm);
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<DistanceResult> call, Throwable t) {
+                    Log.e("DistanceAPI", "Error calculating distance", t);
+                }
+            });
+    }
+
+    private void updateRestaurantDistance(Restaurant restaurant, Map<String, Restaurant> restaurantMap, double distanceInKm) {
+        // Check if fragment is still attached
+        if (!isAdded() || getActivity() == null) {
+            return;
+        }
+
+        // Update restaurant distance in Firebase
+        databaseReference.child("restaurants")
+            .child(restaurant.getId())
+            .child("distance")
+            .setValue(distanceInKm);
+        
+        // Update the restaurant object in the map
+        Restaurant updatedRestaurant = restaurantMap.get(restaurant.getId());
+        if (updatedRestaurant != null) {
+            updatedRestaurant.setDistance(distanceInKm);
+            // Update the list with the modified restaurant
+            int position = restaurantList.indexOf(updatedRestaurant);
+            if (position != -1 && restaurantAdapter != null) {
+                restaurantList.set(position, updatedRestaurant);
+                restaurantAdapter.notifyItemChanged(position);
+            }
+        }
+    }
+
+    private void loadRestaurantsWithoutDistance(DataSnapshot dataSnapshot) {
+        // Check if fragment is still attached
+        if (!isAdded() || getActivity() == null) {
+            return;
+        }
+
+        restaurantList.clear();
+        for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+            String id = snapshot.getKey();
+            loadRestaurantReviews(id);
+            loadItems(id);
+
+            Restaurant restaurant = snapshot.getValue(Restaurant.class);
+            restaurant.setId(snapshot.getKey());
+            if (snapshot.hasChild("category")) {
+                String category = snapshot.child("category").getValue(String.class);
+                restaurant.setCategory(category);
+            } else {
+                restaurant.setCategory("Chưa có danh mục");
+            }
+
+            restaurantList.add(restaurant);
+        }
+
+        if (isAdded() && restaurantAdapter != null) {
+            restaurantAdapter.updateData(restaurantList);
+        }
     }
 
     private void loadItems(String restaurantId) {
@@ -436,5 +747,13 @@ public class HomeFragment extends Fragment implements PromotionAdapter.OnPromoti
         loadPromotions();
         // Update cart button visibility when returning to this fragment
         updateCartButton();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // Clear old cache entries
+        geocodingCache.entrySet().removeIf(entry -> !entry.getValue().isValid());
+        distanceCache.removeIf(cache -> !cache.isValid());
     }
 }

@@ -487,6 +487,8 @@ public class MenuItemDetailActivity extends AppCompatActivity implements OptionA
         orderItem.setItemPrice(foodPrice);
         orderItem.setQuantity(quantity);
         orderItem.setRestaurantId(restaurantId);
+        orderItem.setRestaurantName(restaurantName);
+        orderItem.setImageUrl(foodImageUrl);
 
         // Add selected toppings from option groups
         List<Option> selectedToppingsList = new ArrayList<>();

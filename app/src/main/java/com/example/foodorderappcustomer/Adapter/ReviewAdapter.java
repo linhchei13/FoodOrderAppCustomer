@@ -126,7 +126,7 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
                     .placeholder(R.drawable.loading_img)
                     .error(R.drawable.logo2)
                     .into(holder.imageAvatar);
-        }   else {
+        } else {
             holder.textUserName.setText("any");
             holder.imageAvatar.setImageResource(android.R.drawable.sym_def_app_icon);
         }
@@ -141,16 +141,18 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
             holder.recyclerViewImages.setVisibility(View.GONE);
         }
 
-
-        holder.btnReply.setOnClickListener(v -> {
-            if (replyClickListener != null) {
-                replyClickListener.onReplyClick(position, review);
-            }
-        });
-
-        setupRepliesRecyclerView(holder.recyclerViewReplies, holder.btnReply, review);
-
-
+        // Hide reply button and replies section if replyClickListener is null (in RestaurantInformationActivity)
+        if (replyClickListener == null) {
+            holder.btnReply.setVisibility(View.GONE);
+            holder.recyclerViewReplies.setVisibility(View.GONE);
+        } else {
+            holder.btnReply.setOnClickListener(v -> {
+                if (replyClickListener != null) {
+                    replyClickListener.onReplyClick(position, review);
+                }
+            });
+            setupRepliesRecyclerView(holder.recyclerViewReplies, holder.btnReply, review);
+        }
     }
 
     @Override
@@ -232,9 +234,9 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
                     String lastName = snapshot.child("lastName").getValue(String.class);
                     String name = firstName + " " + lastName;
                     String avatarUrl = snapshot.child("profileImageUrl").getValue(String.class);
-                    callback.onDataLoaded(name != null ? name : "Nhà hàng", avatarUrl != null ? avatarUrl : "");
+                    callback.onDataLoaded(name != null ? name : "Người dùng", avatarUrl != null ? avatarUrl : "");
                 } else {
-                    callback.onDataLoaded("Nhà hàng", ""); // default data if not found
+                    callback.onDataLoaded("Người dùng", ""); // default data if not found
                 }
             }
 
@@ -250,9 +252,16 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
     }
 
     private void setupRepliesRecyclerView(RecyclerView recyclerViewReplies, Button btnReply, Review review) {
-        if (review.getReplies() == null || review.getReplies().isEmpty()) {
+        // If replyClickListener is null (in RestaurantInformationActivity), don't show replies
+        if (replyClickListener == null) {
             recyclerViewReplies.setVisibility(View.GONE);
             btnReply.setVisibility(View.GONE);
+            return;
+        }
+
+        if (review.getReplies() == null || review.getReplies().isEmpty()) {
+            recyclerViewReplies.setVisibility(View.GONE);
+            btnReply.setVisibility(View.VISIBLE);
             return;
         }
 
